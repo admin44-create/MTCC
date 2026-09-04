@@ -20,7 +20,7 @@ import {
   AlertCircle
 } from 'lucide-react';
 
-import { Language, ServiceCategory, ServiceItem, ApplicationRecord, SiteSettings, CustomerUser } from './types';
+import { Language, ServiceCategory, ServiceItem, ApplicationRecord, SiteSettings, CustomerUser, KendraItem } from './types';
 import { SERVICES_DATA } from './data/servicesData';
 import { KENDRA_LOCATIONS } from './data/kendrasData';
 import { INITIAL_APPLICATIONS } from './data/trackingData';
@@ -63,6 +63,16 @@ export default function App() {
       return saved ? JSON.parse(saved) : SERVICES_DATA;
     } catch {
       return SERVICES_DATA;
+    }
+  });
+
+  // Kendra Locations State (Admin Modifiable)
+  const [kendras, setKendras] = useState<KendraItem[]>(() => {
+    try {
+      const saved = localStorage.getItem('ezyseva_kendras');
+      return saved ? JSON.parse(saved) : KENDRA_LOCATIONS;
+    } catch {
+      return KENDRA_LOCATIONS;
     }
   });
 
@@ -109,6 +119,33 @@ export default function App() {
     }
   };
 
+  const handleUpdateServices = (newServices: ServiceItem[]) => {
+    setServices(newServices);
+    try {
+      localStorage.setItem('ezyseva_services', JSON.stringify(newServices));
+    } catch (e) {
+      console.warn('LocalStorage save failed', e);
+    }
+  };
+
+  const handleUpdateKendras = (newKendras: KendraItem[]) => {
+    setKendras(newKendras);
+    try {
+      localStorage.setItem('ezyseva_kendras', JSON.stringify(newKendras));
+    } catch (e) {
+      console.warn('LocalStorage save failed', e);
+    }
+  };
+
+  const handleResetSiteSettings = () => {
+    setSiteSettings(DEFAULT_SITE_SETTINGS);
+    try {
+      localStorage.removeItem('ezyseva_site_settings');
+    } catch (e) {
+      console.warn('LocalStorage save failed', e);
+    }
+  };
+
   const handleUpdateService = (updated: ServiceItem) => {
     setServices((prev) => {
       const next = prev.map((s) => (s.id === updated.id ? updated : s));
@@ -143,6 +180,15 @@ export default function App() {
       }
       return next;
     });
+  };
+
+  const handleUpdateApplications = (newApps: ApplicationRecord[]) => {
+    setApplications(newApps);
+    try {
+      localStorage.setItem('ezyseva_applications', JSON.stringify(newApps));
+    } catch (e) {
+      console.warn('LocalStorage save failed', e);
+    }
   };
 
   const handleUpdateApplicationStatus = (
@@ -306,6 +352,7 @@ export default function App() {
         userRole={userRole}
         onToggleUserRole={() => setUserRole((prev) => (prev === 'citizen' ? 'vle' : 'citizen'))}
         siteSettings={siteSettings}
+        onUpdateLogoStyle={(style) => handleUpdateSiteSettings({ ...siteSettings, logoStyle: style })}
         customer={customer}
         onOpenCustomerPortal={() => setIsCustomerPortalOpen(true)}
         onOpenAdminPanel={() => setIsAdminPanelOpen(true)}
@@ -362,6 +409,11 @@ export default function App() {
         onOpenAiSahayak={() => setIsAiSahayakOpen(true)}
         onSelectNav={handleNavSelect}
         siteSettings={siteSettings}
+        onOrderPvcCard={() => {
+          const pvcService = services.find((s) => s.id === 'pvc-smart-card') || services[0];
+          handleApply(pvcService);
+        }}
+        onUpdateBannerTheme={(theme) => handleUpdateSiteSettings({ ...siteSettings, bannerTheme: theme })}
       />
 
       {/* Main Content Area */}
@@ -430,7 +482,7 @@ export default function App() {
 
         {/* Kendra Locator Section */}
         <KendraLocator
-          kendras={KENDRA_LOCATIONS}
+          kendras={kendras}
           language={language}
         />
 
@@ -512,6 +564,7 @@ export default function App() {
         onSubmitApplication={handleNewApplicationSubmit}
         onGoToTrack={handleGoToTrack}
         customer={customer}
+        siteSettings={siteSettings}
         onOpenCustomerLogin={() => {
           setCustomerPortalAuthMode('login');
           setCustomerAuthPromptReason(
@@ -554,12 +607,17 @@ export default function App() {
         language={language}
         siteSettings={siteSettings}
         onUpdateSiteSettings={handleUpdateSiteSettings}
+        onResetSiteSettings={handleResetSiteSettings}
         services={services}
+        onUpdateServices={handleUpdateServices}
         onUpdateService={handleUpdateService}
         onAddService={handleAddService}
         onDeleteService={handleDeleteService}
         applications={applications}
+        onUpdateApplications={handleUpdateApplications}
         onUpdateApplicationStatus={handleUpdateApplicationStatus}
+        kendras={kendras}
+        onUpdateKendras={handleUpdateKendras}
       />
 
       {/* Customer Portal Modal (Login, Profile, Order History & Instant Apply) */}

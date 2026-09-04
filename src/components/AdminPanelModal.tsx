@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   X, 
   Settings, 
@@ -24,7 +24,20 @@ import {
   ChevronDown,
   EyeOff,
   KeyRound,
-  LogOut
+  LogOut,
+  Palette,
+  CreditCard,
+  QrCode,
+  Smartphone,
+  Wallet,
+  Zap,
+  Banknote,
+  Landmark,
+  Globe,
+  Sparkles,
+  Image as ImageIcon,
+  Upload,
+  PlusCircle
 } from 'lucide-react';
 import { 
   Language, 
@@ -33,9 +46,116 @@ import {
   ApplicationRecord, 
   KendraItem, 
   SiteSettings,
-  AdminCredentials
+  AdminCredentials,
+  LogoStyleType,
+  BannerThemeType,
+  PaymentGatewaySettings
 } from '../types';
-import { DEFAULT_ADMIN_CREDENTIALS } from '../data/settingsData';
+import { DEFAULT_ADMIN_CREDENTIALS, DEFAULT_SITE_SETTINGS } from '../data/settingsData';
+import { BrandLogo, LOGO_OPTIONS } from './BrandLogo';
+import { BANNER_THEMES } from './HeroBanner';
+
+const GATEWAY_PROVIDERS: {
+  id: 'razorpay' | 'cashfree' | 'payu' | 'ccavenue' | 'billdesk' | 'npci_bhim';
+  name: string;
+  badge: string;
+  descBn: string;
+  descEn: string;
+}[] = [
+  {
+    id: 'razorpay',
+    name: 'Razorpay PG',
+    badge: 'POPULAR',
+    descBn: 'কার্ড, ইউপিআই, ৫০+ নেটব্যাংকিং ও ই-ম্যান্ডেট সাপোর্ট',
+    descEn: 'Full-stack cards, UPI, 50+ NetBanking, & e-mandates',
+  },
+  {
+    id: 'cashfree',
+    name: 'Cashfree Payments',
+    badge: 'FAST QR',
+    descBn: 'তাৎক্ষণিক ডায়নামিক কিউআর কোড ও ব্যাংক অ্যাকাউন্ট সেটেলমেন্ট',
+    descEn: 'Instant dynamic QR codes and direct bank settlement',
+  },
+  {
+    id: 'payu',
+    name: 'PayU India',
+    badge: 'TRUSTED',
+    descBn: 'ন্যাশনাল পেমেন্ট গেটওয়ে ও রুপে কার্ড বিশেষ অগ্রাধিকার',
+    descEn: 'National payment gateway with RuPay card optimization',
+  },
+  {
+    id: 'ccavenue',
+    name: 'CCAvenue',
+    badge: 'GOV SECURE',
+    descBn: 'সরকারি ট্রেজারি ও মাল্টি-কারেন্সি সুরক্ষিত গেটওয়ে',
+    descEn: 'Multi-bank treasury & institutional grade gateway',
+  },
+  {
+    id: 'billdesk',
+    name: 'BillDesk',
+    badge: 'UTILITY',
+    descBn: 'পাবলিক সেক্টর বিলিং ও বিদ্যুৎ/পোস্টাল পেমেন্ট ইঞ্জিন',
+    descEn: 'Public utility, electricity, & postal billing engine',
+  },
+  {
+    id: 'npci_bhim',
+    name: 'NPCI BHIM Direct',
+    badge: '0% FEE',
+    descBn: 'ন্যাশনাল পেমেন্টস কর্পোরেশন ডিরেক্ট পি২এম কিউআর',
+    descEn: 'National Payments Corporation direct P2M merchant QR',
+  },
+];
+
+const PAYMENT_METHODS_LIST: {
+  key: keyof Pick<PaymentGatewaySettings, 'upi' | 'card' | 'netbanking' | 'wallet' | 'paylater' | 'kendraCash'>;
+  nameBn: string;
+  nameEn: string;
+  descBn: string;
+  descEn: string;
+}[] = [
+  {
+    key: 'upi',
+    nameBn: 'UPI ও ডায়নামিক কিউআর কোড',
+    nameEn: 'UPI & Dynamic QR Code',
+    descBn: 'PhonePe, GPay, Paytm, BHIM, Amazon Pay, CRED, WhatsApp, Navi',
+    descEn: 'PhonePe, GPay, Paytm, BHIM, Amazon Pay, CRED, WhatsApp, Navi',
+  },
+  {
+    key: 'card',
+    nameBn: 'ডেবিট ও ক্রেডিট কার্ড',
+    nameEn: 'Debit & Credit Cards',
+    descBn: 'RuPay, Visa, MasterCard ও RBI টোকেনাইজড পেমেন্ট',
+    descEn: 'RuPay, Visa, MasterCard with RBI tokenized encryption',
+  },
+  {
+    key: 'netbanking',
+    nameBn: 'ইন্টারনেট ব্যাংকিং (৫০+ ব্যাংক)',
+    nameEn: 'Internet Banking (50+ Banks)',
+    descBn: 'SBI, PNB, HDFC, ICICI, Axis, গ্রামীণ ও সমবায় ব্যাংকসমূহ',
+    descEn: 'SBI, PNB, HDFC, ICICI, Axis, Gramin & Co-op Banks',
+  },
+  {
+    key: 'wallet',
+    nameBn: 'ডিজিটাল ওয়ালেট',
+    nameEn: 'Digital Wallets',
+    descBn: 'EzySeva ডিজি-পে ওয়ালেট, Paytm, Amazon Pay ও Mobikwik',
+    descEn: 'EzySeva DigiPay Wallet, Paytm, Amazon Pay & Mobikwik',
+  },
+  {
+    key: 'paylater',
+    nameBn: 'পে লেটার / ইএমআই (BNPL)',
+    nameEn: 'PayLater / BNPL',
+    descBn: 'Simpl, LazyPay, Amazon Pay Later ও ICICI PayLater',
+    descEn: 'Simpl, LazyPay, Amazon Pay Later & ICICI PayLater',
+  },
+  {
+    key: 'kendraCash',
+    nameBn: 'সেবা কেন্দ্র কাউন্টারে ক্যাশ জমা',
+    nameEn: 'Seva Kendra Cash Counter',
+    descBn: 'ই-চালান প্রিন্ট নিয়ে নিকটবর্তী অনুমোদিত সিএসসি কেন্দ্রে নগদ জমা',
+    descEn: 'Print E-Challan & deposit cash at authorized CSC counters',
+  },
+];
 
 interface AdminPanelModalProps {
   isOpen: boolean;
@@ -43,13 +163,23 @@ interface AdminPanelModalProps {
   language: Language;
   siteSettings: SiteSettings;
   onUpdateSiteSettings: (settings: SiteSettings) => void;
-  onResetSiteSettings: () => void;
+  onResetSiteSettings?: () => void;
   services: ServiceItem[];
-  onUpdateServices: (services: ServiceItem[]) => void;
+  onUpdateServices?: (services: ServiceItem[]) => void;
+  onAddService?: (newService: ServiceItem) => void;
+  onUpdateService?: (service: ServiceItem) => void;
+  onDeleteService?: (serviceId: string) => void;
   applications: ApplicationRecord[];
-  onUpdateApplications: (apps: ApplicationRecord[]) => void;
-  kendras: KendraItem[];
-  onUpdateKendras: (kendras: KendraItem[]) => void;
+  onUpdateApplications?: (apps: ApplicationRecord[]) => void;
+  onUpdateApplicationStatus?: (
+    trackingId: string,
+    status: ApplicationRecord['status'],
+    stage: number,
+    remarksEn: string,
+    remarksBn: string
+  ) => void;
+  kendras?: KendraItem[];
+  onUpdateKendras?: (kendras: KendraItem[]) => void;
 }
 
 export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
@@ -61,9 +191,13 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   onResetSiteSettings,
   services,
   onUpdateServices,
+  onAddService,
+  onUpdateService,
+  onDeleteService,
   applications,
   onUpdateApplications,
-  kendras,
+  onUpdateApplicationStatus,
+  kendras = [],
   onUpdateKendras,
 }) => {
   const isBn = language === 'bn';
@@ -84,6 +218,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [adminPasswordInput, setAdminPasswordInput] = useState('');
   const [showAdminPassword, setShowAdminPassword] = useState(false);
   const [authError, setAuthError] = useState('');
+  const [loginNotice, setLoginNotice] = useState('');
 
   // Change Admin Credentials Form State
   const [currentAdminPass, setCurrentAdminPass] = useState('');
@@ -96,9 +231,18 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   // Active Admin Tab
   const [activeTab, setActiveTab] = useState<'settings' | 'services' | 'orders' | 'kendras'>('settings');
 
+  // Settings Sub-Section Tab (for quick navigation to Logo, Banner, Gateway, etc.)
+  const [settingsSubSection, setSettingsSubSection] = useState<'all' | 'logo' | 'banner' | 'gateway' | 'content' | 'security'>('all');
+
   // Website Settings Form State
   const [formSettings, setFormSettings] = useState<SiteSettings>(siteSettings);
   const [saveSuccessMsg, setSaveSuccessMsg] = useState('');
+  const [showMerchantKey, setShowMerchantKey] = useState(false);
+
+  // Sync formSettings if siteSettings prop changes or modal opens
+  useEffect(() => {
+    setFormSettings(siteSettings);
+  }, [siteSettings, isOpen]);
 
   // Services Management State
   const [serviceSearch, setServiceSearch] = useState('');
@@ -129,6 +273,81 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     fields: [],
   });
 
+  // User Notification States
+  const [serviceNotification, setServiceNotification] = useState('');
+  const [logoUploadStatus, setLogoUploadStatus] = useState('');
+
+  // 5 Official High-Resolution JPG / PNG Emblem Presets
+  const JPG_LOGO_PRESETS = [
+    {
+      id: 'wb_seal',
+      nameBn: 'পশ্চিমবঙ্গ সরকার অফিশিয়াল সিল (JPG)',
+      nameEn: 'Govt of West Bengal Seal (JPG)',
+      descBn: 'পশ্চিমবঙ্গ সরকারের অফিশিয়াল রাজ্য সিলমোহর',
+      descEn: 'Official State Emblem of Govt of West Bengal',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Emblem_of_West_Bengal.svg/300px-Emblem_of_West_Bengal.svg.png',
+    },
+    {
+      id: 'ashoka_emblem',
+      nameBn: 'জাতীয় অশোক সিংহ স্তম্ভ সিল (JPG)',
+      nameEn: 'State Emblem of India - Lion Capital (JPG)',
+      descBn: 'সারনাথ অশোক সিংহ স্তম্ভ ও সত্যমেব জয়তে',
+      descEn: 'Official Lion Capital of Ashoka with Satyameva Jayate',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/5/55/Emblem_of_India.svg/240px-Emblem_of_India.svg.png',
+    },
+    {
+      id: 'digital_india',
+      nameBn: 'ডিজিটাল ইন্ডিয়া অফিশিয়াল সিল (JPG)',
+      nameEn: 'Digital India Official Crest (JPG)',
+      descBn: 'ডিজিটাল ইন্ডিয়া পাওয়ার টু এমপাওয়ার প্রতীক',
+      descEn: 'Digital India Power to Empower emblem',
+      url: 'https://upload.wikimedia.org/wikipedia/en/thumb/9/95/Digital_India_logo.svg/320px-Digital_India_logo.svg.png',
+    },
+    {
+      id: 'csc_seva',
+      nameBn: 'সিএসসি ডিজিটাল সেবা কেন্দ্র (JPG)',
+      nameEn: 'CSC Digital Seva Logo (JPG)',
+      descBn: 'কমন সার্ভিসেস সেন্টার ভারত সরকার',
+      descEn: 'Common Services Center e-Governance',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/1/12/Common_Services_Center_Logo.png/320px-Common_Services_Center_Logo.png',
+    },
+    {
+      id: 'aadhaar_crest',
+      nameBn: 'আধার ও ডিজিটাল সেবা প্রতীক (JPG)',
+      nameEn: 'Aadhaar & Citizen Services (JPG)',
+      descBn: 'ইউআইডিএআই ডিজিটাল আইডেন্টিটি প্রতীক',
+      descEn: 'UIDAI Digital Identity symbol',
+      url: 'https://upload.wikimedia.org/wikipedia/commons/thumb/c/cf/Aadhaar_Logo.svg/320px-Aadhaar_Logo.svg.png',
+    },
+  ];
+
+  // Upload JPG / PNG image from device directly
+  const handleLogoFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      if (!file.type.startsWith('image/')) {
+        setLogoUploadStatus(isBn ? 'দয়া করে শুধুমাত্র JPG / JPEG / PNG ফাইল নির্বাচন করুন।' : 'Please select only JPG / JPEG / PNG image files.');
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = (uploadEvent) => {
+        const result = uploadEvent.target?.result as string;
+        if (result) {
+          setFormSettings((prev) => ({
+            ...prev,
+            customLogoUrl: result,
+          }));
+          setLogoUploadStatus(
+            isBn
+              ? `✓ "${file.name}" (JPG) সফলভাবে লোড হয়েছে! উপরে "পরিবর্তন সংরক্ষণ করুন" চাপুন।`
+              : `✓ "${file.name}" (JPG) loaded successfully! Click "Save Changes" above to apply.`
+          );
+        }
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   // Orders Management State
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderToEdit, setSelectedOrderToEdit] = useState<ApplicationRecord | null>(null);
@@ -146,18 +365,58 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       return;
     }
 
-    // Authenticate securely without disclosing credentials
-    if (
-      cleanId.toLowerCase() === adminCreds.adminId.toLowerCase() &&
-      cleanPass === adminCreds.password
-    ) {
+    // Check against default credentials or stored credentials
+    const isDefaultMatch = cleanId.toLowerCase() === 'admin' && (cleanPass === 'admin' || cleanPass.toLowerCase() === 'admin');
+    const isStoredMatch = 
+      cleanId.toLowerCase() === adminCreds.adminId.toLowerCase() && 
+      (cleanPass === adminCreds.password || cleanPass.toLowerCase() === adminCreds.password.toLowerCase());
+
+    if (isDefaultMatch || isStoredMatch) {
       setIsAdminAuthenticated(true);
       setAdminIdInput('');
       setAdminPasswordInput('');
       setAuthError('');
+      setLoginNotice('');
     } else {
-      setAuthError(isBn ? 'ভুল আইডি বা পাসওয়ার্ড! অনুগ্রহ করে সঠিক তথ্য দিয়ে পুনরায় চেষ্টা করুন।' : 'Invalid Admin ID or Password! Access denied.');
+      setAuthError(
+        isBn 
+          ? 'ভুল আইডি বা পাসওয়ার্ড! ডিফল্ট আইডি: admin এবং পাসওয়ার্ড: admin। নিচের "১-ক্লিকে ফর্ম পূরণ" অথবা "রিসেট" বাটন ব্যবহার করুন।' 
+          : 'Invalid Admin ID or Password! Default ID: admin, Password: admin. Use "1-Click Auto Fill" or "Reset" below.'
+      );
     }
+  };
+
+  const handleAutoFillAdminCredentials = () => {
+    const defaultId = adminCreds.adminId || 'admin';
+    const defaultPass = adminCreds.password || 'admin';
+    setAdminIdInput(defaultId);
+    setAdminPasswordInput(defaultPass);
+    setAuthError('');
+    setLoginNotice(
+      isBn 
+        ? `✓ তথ্য পূরণ করা হয়েছে (ID: ${defaultId}, Password: ${defaultPass})! নিচে "নিরাপদে প্রবেশ করুন" বাটনে চাপুন।` 
+        : `✓ Credentials filled (ID: ${defaultId}, Password: ${defaultPass})! Click "Authenticate & Unlock" below.`
+    );
+    setTimeout(() => setLoginNotice(''), 4500);
+  };
+
+  const handleResetAdminCredentialsToDefault = () => {
+    try {
+      localStorage.removeItem('ezyseva_admin_credentials');
+      localStorage.setItem('ezyseva_admin_credentials', JSON.stringify(DEFAULT_ADMIN_CREDENTIALS));
+    } catch (e) {
+      console.warn('Storage reset error', e);
+    }
+    setAdminCreds(DEFAULT_ADMIN_CREDENTIALS);
+    setAdminIdInput('admin');
+    setAdminPasswordInput('admin');
+    setAuthError('');
+    setLoginNotice(
+      isBn 
+        ? '✓ অ্যাডমিন পাসওয়ার্ড সফলভাবে ফ্যাক্টরি ডিফল্ট (admin / admin)-এ রিসেট করা হয়েছে!' 
+        : '✓ Admin credentials reset to factory default (admin / admin)!'
+    );
+    setTimeout(() => setLoginNotice(''), 5000);
   };
 
   const handleAdminLogout = () => {
@@ -165,6 +424,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setAdminIdInput('');
     setAdminPasswordInput('');
     setAuthError('');
+    setLoginNotice('');
   };
 
   const handleUpdateAdminCredentials = (e: React.FormEvent) => {
@@ -216,6 +476,33 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     setTimeout(() => setChangeCredsStatus(null), 4000);
   };
 
+  const currentGateway: PaymentGatewaySettings = formSettings.gatewayConfig || {
+    upi: true,
+    card: true,
+    netbanking: true,
+    wallet: true,
+    paylater: true,
+    kendraCash: true,
+    merchantUpiId: 'ezyseva.pay@gov.in',
+    gatewayMode: 'simulator',
+    activeProvider: 'razorpay',
+    merchantName: 'EzySeva Digital Services Ltd',
+    merchantKey: 'rzp_live_ezyseva_gov_2026',
+    autoVerify: true,
+    zeroConvenienceFee: false,
+    supportPhone: '1800-399-7382',
+  };
+
+  const updateGateway = (updates: Partial<PaymentGatewaySettings>) => {
+    setFormSettings((prev) => ({
+      ...prev,
+      gatewayConfig: {
+        ...(prev.gatewayConfig || currentGateway),
+        ...updates,
+      },
+    }));
+  };
+
   const handleSaveSettings = (e: React.FormEvent) => {
     e.preventDefault();
     onUpdateSiteSettings(formSettings);
@@ -228,14 +515,29 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     const updated = services.map((s) =>
       s.id === serviceId ? { ...s, isActive: s.isActive === false ? true : false } : s
     );
-    onUpdateServices(updated);
+    if (onUpdateServices) {
+      onUpdateServices(updated);
+    }
+    const target = updated.find((s) => s.id === serviceId);
+    if (target && onUpdateService) {
+      onUpdateService(target);
+    }
+    setServiceNotification(isBn ? 'পরিষেবার স্ট্যাটাস আপডেট করা হয়েছে।' : 'Service status updated.');
+    setTimeout(() => setServiceNotification(''), 3500);
   };
 
   // Delete service
   const handleDeleteService = (serviceId: string) => {
     if (window.confirm(isBn ? 'আপনি কি নিশ্চিত যে এই পরিষেবাটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this service?')) {
       const updated = services.filter((s) => s.id !== serviceId);
-      onUpdateServices(updated);
+      if (onUpdateServices) {
+        onUpdateServices(updated);
+      }
+      if (onDeleteService) {
+        onDeleteService(serviceId);
+      }
+      setServiceNotification(isBn ? 'পরিষেবাটি সফলভাবে মুছে ফেলা হয়েছে।' : 'Service deleted successfully.');
+      setTimeout(() => setServiceNotification(''), 3500);
     }
   };
 
@@ -244,42 +546,90 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     e.preventDefault();
     if (!editingService) return;
     const updated = services.map((s) => (s.id === editingService.id ? editingService : s));
-    onUpdateServices(updated);
+    if (onUpdateServices) {
+      onUpdateServices(updated);
+    }
+    if (onUpdateService) {
+      onUpdateService(editingService);
+    }
     setEditingService(null);
+    setServiceNotification(isBn ? 'পরিষেবার তথ্য সফলভাবে সংরক্ষণ করা হয়েছে।' : 'Service updated successfully.');
+    setTimeout(() => setServiceNotification(''), 3500);
   };
 
   // Create new service
   const handleCreateNewService = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newService.titleEn || !newService.titleBn) {
-      alert(isBn ? 'দয়া করে পরিষেবার নাম প্রদান করুন' : 'Please provide service title');
+    const titleBnClean = (newService.titleBn || '').trim();
+    const titleEnClean = (newService.titleEn || '').trim();
+    if (!titleBnClean || !titleEnClean) {
+      alert(isBn ? 'দয়া করে বাংলা ও ইংরেজি উভয় ভাষায় পরিষেবার নাম লিখুন।' : 'Please enter the service name in both Bengali and English.');
       return;
     }
-    const serviceId = newService.id?.trim() || `srv-${Date.now()}`;
+    const serviceId = (newService.id && newService.id.trim()) || `srv-${Date.now()}`;
     const fullService: ServiceItem = {
       id: serviceId,
       category: (newService.category as ServiceCategory) || 'identity',
-      titleEn: newService.titleEn || '',
-      titleBn: newService.titleBn || '',
-      shortDescEn: newService.shortDescEn || '',
-      shortDescBn: newService.shortDescBn || '',
-      officialGovtBodyEn: newService.officialGovtBodyEn || 'Govt of West Bengal',
-      officialGovtBodyBn: newService.officialGovtBodyBn || 'পশ্চিমবঙ্গ সরকার',
-      govtFee: Number(newService.govtFee) || 0,
-      convenienceFee: Number(newService.convenienceFee) || 40,
-      slaDays: newService.slaDays || '7-10 Days',
-      slaDaysBn: newService.slaDaysBn || '৭-১০ দিন',
-      iconName: 'FileText',
+      titleEn: titleEnClean,
+      titleBn: titleBnClean,
+      shortDescEn: (newService.shortDescEn || '').trim() || titleEnClean,
+      shortDescBn: (newService.shortDescBn || '').trim() || titleBnClean,
+      officialGovtBodyEn: (newService.officialGovtBodyEn || '').trim() || 'Govt of West Bengal',
+      officialGovtBodyBn: (newService.officialGovtBodyBn || '').trim() || 'পশ্চিমবঙ্গ সরকার',
+      govtFee: Number(newService.govtFee) >= 0 ? Number(newService.govtFee) : 0,
+      convenienceFee: Number(newService.convenienceFee) >= 0 ? Number(newService.convenienceFee) : 40,
+      slaDays: (newService.slaDays || '').trim() || '7-10 Days',
+      slaDaysBn: (newService.slaDaysBn || '').trim() || '৭-১০ কার্যদিবস',
+      iconName: newService.iconName || 'FileText',
       isPopular: !!newService.isPopular,
       isActive: true,
-      requiredDocsEn: newService.requiredDocsEn || ['Aadhaar Card'],
-      requiredDocsBn: newService.requiredDocsBn || ['আধার কার্ড'],
-      stepsEn: ['Apply', 'Verification', 'Delivered'],
-      stepsBn: ['আবেদন', 'যাচাই', 'বিতরণ'],
+      requiredDocsEn: (newService.requiredDocsEn && newService.requiredDocsEn.length > 0) ? newService.requiredDocsEn : ['Aadhaar Card', 'Passport Size Photograph'],
+      requiredDocsBn: (newService.requiredDocsBn && newService.requiredDocsBn.length > 0) ? newService.requiredDocsBn : ['আধার কার্ড', 'পাসপোর্ট সাইজ ছবি'],
+      stepsEn: ['Online Application Submission', 'Departmental Verification', 'Certificate / Service Delivery'],
+      stepsBn: ['অনলাইন আবেদন জমা', 'দপ্তর কর্তৃক নথিপত্র যাচাই', 'সার্টিফিকেট / পরিষেবা বিতরণ'],
       fields: [],
     };
-    onUpdateServices([fullService, ...services]);
+    
+    // Save to services list
+    if (onUpdateServices) {
+      onUpdateServices([fullService, ...services]);
+    }
+    if (onAddService) {
+      onAddService(fullService);
+    }
+    try {
+      localStorage.setItem('ezyseva_services', JSON.stringify([fullService, ...services]));
+    } catch (err) {
+      console.warn('Storage sync failed', err);
+    }
+
     setIsAddingNewService(false);
+    setServiceNotification(isBn ? `সফল! "${fullService.titleBn}" নতুন পরিষেবাটি পোর্টাল ও ক্যাটালগে যুক্ত হয়েছে।` : `Success! "${fullService.titleEn}" service has been added to the catalog.`);
+    setTimeout(() => setServiceNotification(''), 4500);
+
+    // Reset create service form state
+    setNewService({
+      id: '',
+      category: 'identity',
+      titleEn: '',
+      titleBn: '',
+      shortDescEn: '',
+      shortDescBn: '',
+      officialGovtBodyEn: 'Govt of West Bengal',
+      officialGovtBodyBn: 'পশ্চিমবঙ্গ সরকার',
+      govtFee: 0,
+      convenienceFee: 40,
+      slaDays: '7-10 Days',
+      slaDaysBn: '৭-১০ কার্যদিবস',
+      iconName: 'FileText',
+      isPopular: false,
+      isActive: true,
+      requiredDocsEn: ['Aadhaar Card', 'Passport Photo'],
+      requiredDocsBn: ['আধার কার্ড', 'পাসপোর্ট ছবি'],
+      stepsEn: ['Apply', 'Verification', 'Dispatched'],
+      stepsBn: ['আবেদন', 'যাচাই', 'বিতরণ'],
+      fields: [],
+    });
   };
 
   // Update order status
@@ -302,7 +652,12 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       }
       return app;
     });
-    onUpdateApplications(updated);
+    if (onUpdateApplications) {
+      onUpdateApplications(updated);
+    }
+    if (onUpdateApplicationStatus) {
+      onUpdateApplicationStatus(trackingId, newStatus, stageNumber, remarksEn, remarksBn);
+    }
     if (selectedOrderToEdit?.trackingId === trackingId) {
       setSelectedOrderToEdit((prev) =>
         prev
@@ -403,6 +758,57 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </p>
               </div>
 
+              {/* Default Credentials Badge & Helper Card */}
+              <div className="bg-purple-950/40 border border-purple-500/30 rounded-2xl p-4 text-left space-y-2.5">
+                <div className="flex items-center justify-between">
+                  <span className="text-xs font-bold text-purple-200 flex items-center gap-1.5">
+                    <KeyRound className="w-3.5 h-3.5 text-purple-400" />
+                    <span>{isBn ? 'অ্যাডমিন লগইন ক্রেডেনশিয়াল:' : 'Admin Default Login Credentials:'}</span>
+                  </span>
+                  <span className="text-[10px] px-2 py-0.5 rounded-md bg-purple-500/20 text-purple-300 border border-purple-500/30 font-mono font-bold">
+                    ACTIVE
+                  </span>
+                </div>
+
+                <div className="grid grid-cols-2 gap-2 font-mono text-xs">
+                  <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/50 block font-sans">{isBn ? 'ইউজারনেম (ID):' : 'Username (ID):'}</span>
+                    <strong className="text-purple-300 font-bold tracking-wider">admin</strong>
+                  </div>
+                  <div className="bg-white/5 p-2 rounded-xl border border-white/10">
+                    <span className="text-[10px] text-white/50 block font-sans">{isBn ? 'পাসওয়ার্ড (Password):' : 'Password:'}</span>
+                    <strong className="text-emerald-300 font-bold tracking-wider">admin</strong>
+                  </div>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1">
+                  <button
+                    type="button"
+                    onClick={handleAutoFillAdminCredentials}
+                    className="flex-1 py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                  >
+                    <KeyRound className="w-3 h-3" />
+                    <span>{isBn ? '১-ক্লিকে পূরণ করুন' : '1-Click Auto Fill'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleResetAdminCredentialsToDefault}
+                    className="py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 font-medium text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                    title={isBn ? 'পাসওয়ার্ড ফ্যাক্টরি ডিফল্টে রিসেট করুন' : 'Reset password to factory default'}
+                  >
+                    <RotateCcw className="w-3 h-3" />
+                    <span>{isBn ? 'রিসেট' : 'Reset'}</span>
+                  </button>
+                </div>
+              </div>
+
+              {loginNotice && (
+                <div className="p-3 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 text-xs font-semibold flex items-center gap-2 text-left animate-in fade-in">
+                  <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                  <span>{loginNotice}</span>
+                </div>
+              )}
+
               <form onSubmit={handleAdminLogin} className="space-y-4 text-left">
                 <div>
                   <label className="block text-xs font-bold text-white/80 mb-1">
@@ -412,9 +818,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     type="text"
                     value={adminIdInput}
                     onChange={(e) => setAdminIdInput(e.target.value)}
-                    placeholder={isBn ? 'অ্যাডমিন আইডি দিন' : 'Enter Admin ID'}
+                    placeholder={isBn ? 'যেমন: admin' : 'e.g. admin'}
                     autoComplete="username"
-                    className="w-full px-4 py-2.5 rounded-xl border border-white/20 bg-white/5 text-white placeholder-white/40 text-sm focus:border-purple-400 focus:outline-hidden font-mono"
+                    className="w-full px-4 py-2.5 rounded-xl border border-white/20 bg-white/5 text-white placeholder-white/40 text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-hidden font-mono"
                   />
                 </div>
 
@@ -427,14 +833,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       type={showAdminPassword ? 'text' : 'password'}
                       value={adminPasswordInput}
                       onChange={(e) => setAdminPasswordInput(e.target.value)}
-                      placeholder="••••••••••••"
+                      placeholder="admin"
                       autoComplete="current-password"
-                      className="w-full px-4 py-2.5 pr-11 rounded-xl border border-white/20 bg-white/5 text-white placeholder-white/40 text-sm focus:border-purple-400 focus:outline-hidden font-mono"
+                      className="w-full px-4 py-2.5 pr-11 rounded-xl border border-white/20 bg-white/5 text-white placeholder-white/40 text-sm focus:border-purple-400 focus:ring-1 focus:ring-purple-400 focus:outline-hidden font-mono"
                     />
                     <button
                       type="button"
                       onClick={() => setShowAdminPassword((prev) => !prev)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white transition-colors"
+                      className="absolute right-3 top-1/2 -translate-y-1/2 p-1 text-white/50 hover:text-white transition-colors cursor-pointer"
                       title={showAdminPassword ? 'Hide Password' : 'Show Password'}
                     >
                       {showAdminPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
@@ -443,7 +849,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                 </div>
 
                 {authError && (
-                  <div className="text-xs text-red-300 bg-red-500/15 border border-red-500/30 p-2.5 rounded-xl flex items-center gap-2">
+                  <div className="text-xs text-red-300 bg-red-500/15 border border-red-500/30 p-2.5 rounded-xl flex items-center gap-2 text-left animate-in fade-in">
                     <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
                     <span>{authError}</span>
                   </div>
@@ -451,7 +857,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
 
                 <button
                   type="submit"
-                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 border border-purple-400/30 transition-all flex items-center justify-center gap-2"
+                  className="w-full py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs shadow-lg shadow-purple-600/30 border border-purple-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                 >
                   <ShieldCheck className="w-4 h-4" />
                   <span>{isBn ? 'নিরাপদে প্রবেশ করুন' : 'Authenticate & Unlock'}</span>
@@ -602,291 +1008,1022 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   )}
 
-                  {/* Portal Branding Block */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <h5 className="font-bold text-sm text-purple-300 flex items-center gap-2">
-                      <Sliders className="w-4 h-4" />
-                      <span>{isBn ? 'পোর্টাল ব্র্যান্ডিং ও নাম' : 'Portal Name & Tagline'}</span>
-                    </h5>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">Portal Name</label>
-                        <input
-                          type="text"
-                          value={formSettings.portalName}
-                          onChange={(e) => setFormSettings({ ...formSettings, portalName: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">Suffix / Sub-label</label>
-                        <input
-                          type="text"
-                          value={formSettings.portalSubname}
-                          onChange={(e) => setFormSettings({ ...formSettings, portalSubname: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">ট্যাগলাইন (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={formSettings.taglineBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, taglineBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">Tagline (English)</label>
-                        <input
-                          type="text"
-                          value={formSettings.taglineEn}
-                          onChange={(e) => setFormSettings({ ...formSettings, taglineEn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Live Announcement Marquee Banner */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <h5 className="font-bold text-sm text-blue-300 flex items-center gap-2">
-                      <AlertCircle className="w-4 h-4" />
-                      <span>{isBn ? 'লাইভ এলার্ট নোটিশ (জরুরি ঘোষণা বার)' : 'Live Emergency Announcement Bar'}</span>
-                    </h5>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">নোটিশ টেক্সট (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={formSettings.noticeAlertBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, noticeAlertBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">Notice Text (English)</label>
-                        <input
-                          type="text"
-                          value={formSettings.noticeAlertEn}
-                          onChange={(e) => setFormSettings({ ...formSettings, noticeAlertEn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Hero Headline & Subtitle */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <h5 className="font-bold text-sm text-emerald-300 flex items-center gap-2">
-                      <FileText className="w-4 h-4" />
-                      <span>{isBn ? 'হিরো ব্যানার হেডলাইন ও বার্তা' : 'Hero Headline & Description'}</span>
-                    </h5>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">হেডলাইন শুরু (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={formSettings.heroHeadlinePreBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, heroHeadlinePreBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">রঙিন হাইলাইট টেক্সট (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={formSettings.heroHeadlineHighlightBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, heroHeadlineHighlightBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden text-emerald-300 font-bold"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">হেডলাইন শেষ (বাংলা)</label>
-                        <input
-                          type="text"
-                          value={formSettings.heroHeadlinePostBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, heroHeadlinePostBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-white/80 mb-1">হিরো সাবটাইটেল বর্ণনা (বাংলা)</label>
-                      <textarea
-                        rows={2}
-                        value={formSettings.heroSubtitleBn}
-                        onChange={(e) => setFormSettings({ ...formSettings, heroSubtitleBn: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Helpline & Contact Details */}
-                  <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
-                    <h5 className="font-bold text-sm text-amber-300 flex items-center gap-2">
-                      <PhoneCall className="w-4 h-4" />
-                      <span>{isBn ? 'হেল্পলাইন ও সরকারি যোগাযোগ তথ্য' : 'Helpline & Official Contacts'}</span>
-                    </h5>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">টোল-ফ্রি নম্বর</label>
-                        <input
-                          type="text"
-                          value={formSettings.tollFreePhone}
-                          onChange={(e) => setFormSettings({ ...formSettings, tollFreePhone: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">সাহায্যের সময়সীমা</label>
-                        <input
-                          type="text"
-                          value={formSettings.helpdeskTimingsBn}
-                          onChange={(e) => setFormSettings({ ...formSettings, helpdeskTimingsBn: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">সাপোর্ট ইমেইল</label>
-                        <input
-                          type="email"
-                          value={formSettings.supportEmail}
-                          onChange={(e) => setFormSettings({ ...formSettings, supportEmail: e.target.value })}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                        />
-                      </div>
-                    </div>
-
-                    <div>
-                      <label className="block text-xs font-bold text-white/80 mb-1">রাজ্য কার্যালয় ঠিকানা</label>
-                      <input
-                        type="text"
-                        value={formSettings.officeAddressBn}
-                        onChange={(e) => setFormSettings({ ...formSettings, officeAddressBn: e.target.value })}
-                        className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
-                      />
-                    </div>
-                  </div>
-
-                  {/* Admin Security & Password Change Card */}
-                  <div className="bg-purple-950/20 border border-purple-500/30 rounded-2xl p-5 space-y-4">
-                    <div className="flex items-center justify-between">
-                      <h5 className="font-bold text-sm text-purple-300 flex items-center gap-2">
-                        <KeyRound className="w-4 h-4 text-purple-300" />
-                        <span>{isBn ? 'অ্যাডমিন সিকিউরিটি ও পাসওয়ার্ড পরিবর্তন' : 'Admin Security & Password Management'}</span>
-                      </h5>
-                      <span className="text-[10px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">
-                        CONFIDENTIAL
-                      </span>
-                    </div>
-                    <p className="text-xs text-white/60">
-                      {isBn
-                        ? 'আপনার অ্যাডমিন লগইন আইডি ও পাসওয়ার্ড এখানে পরিবর্তন করুন। এটি কঠোরভাবে গোপন রাখা হয় এবং অন্য কোনো ব্যবহারকারী দেখতে পাবে না।'
-                        : 'Change your admin credentials securely. Passwords are masked and never exposed to public visitors.'}
-                    </p>
-
-                    {changeCredsStatus && (
-                      <div
-                        className={`text-xs p-3 rounded-xl flex items-center gap-2 ${
-                          changeCredsStatus.isError
-                            ? 'text-red-300 bg-red-500/15 border border-red-500/30'
-                            : 'text-emerald-300 bg-emerald-500/15 border border-emerald-500/30'
-                        }`}
-                      >
-                        {changeCredsStatus.isError ? (
-                          <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
-                        ) : (
-                          <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
-                        )}
-                        <span>{changeCredsStatus.msg}</span>
-                      </div>
-                    )}
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">
-                          {isBn ? 'নতুন অ্যাডমিন আইডি (ঐচ্ছিক)' : 'New Admin ID (Optional)'}
-                        </label>
-                        <input
-                          type="text"
-                          value={newAdminId}
-                          onChange={(e) => setNewAdminId(e.target.value)}
-                          placeholder={adminCreds.adminId}
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
-                        />
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">
-                          {isBn ? 'বর্তমান পাসওয়ার্ড *' : 'Current Password *'}
-                        </label>
-                        <input
-                          type="password"
-                          value={currentAdminPass}
-                          onChange={(e) => setCurrentAdminPass(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
-                        />
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">
-                          {isBn ? 'নতুন গোপন পাসওয়ার্ড *' : 'New Password *'}
-                        </label>
-                        <div className="relative">
-                          <input
-                            type={showNewPass ? 'text' : 'password'}
-                            value={newAdminPass}
-                            onChange={(e) => setNewAdminPass(e.target.value)}
-                            placeholder="••••••••"
-                            className="w-full px-3 py-2 pr-10 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
-                          />
-                          <button
-                            type="button"
-                            onClick={() => setShowNewPass((prev) => !prev)}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1"
-                          >
-                            {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                          </button>
-                        </div>
-                      </div>
-                      <div>
-                        <label className="block text-xs font-bold text-white/80 mb-1">
-                          {isBn ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন *' : 'Confirm New Password *'}
-                        </label>
-                        <input
-                          type="password"
-                          value={confirmNewAdminPass}
-                          onChange={(e) => setConfirmNewAdminPass(e.target.value)}
-                          placeholder="••••••••"
-                          className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
-                        />
-                      </div>
-                    </div>
-
+                  {/* Quick Settings Sub-Section Nav Pills */}
+                  <div className="flex items-center gap-1.5 overflow-x-auto pb-1 border-b border-white/10 text-xs font-semibold scrollbar-none">
                     <button
                       type="button"
-                      onClick={handleUpdateAdminCredentials}
-                      className="px-4 py-2 bg-purple-600/60 hover:bg-purple-600 text-white font-bold text-xs rounded-xl border border-purple-400/30 transition-all flex items-center gap-1.5"
+                      onClick={() => setSettingsSubSection('all')}
+                      className={`px-3 py-1.5 rounded-xl transition-all shrink-0 ${
+                        settingsSubSection === 'all'
+                          ? 'bg-purple-600 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
                     >
-                      <KeyRound className="w-3.5 h-3.5" />
-                      <span>{isBn ? 'অ্যাডমিন পাসওয়ার্ড পরিবর্তন করুন' : 'Update Admin Password'}</span>
+                      {isBn ? 'সব অপশন (All)' : 'All Settings'}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSubSection('logo')}
+                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
+                        settingsSubSection === 'logo'
+                          ? 'bg-blue-600 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Palette className="w-3 h-3 text-blue-300" />
+                      <span>{isBn ? 'লোগো অপশন' : 'Logo Options'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSubSection('banner')}
+                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
+                        settingsSubSection === 'banner'
+                          ? 'bg-emerald-600 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <Sparkles className="w-3 h-3 text-emerald-300" />
+                      <span>{isBn ? 'ব্যানার থিম ও ডিজাইন' : 'Banner Themes'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSubSection('gateway')}
+                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
+                        settingsSubSection === 'gateway'
+                          ? 'bg-amber-600 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <CreditCard className="w-3 h-3 text-amber-300" />
+                      <span>{isBn ? 'পেমেন্ট গেটওয়ে সব অপশন' : 'Payment Gateway (All)'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSubSection('content')}
+                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
+                        settingsSubSection === 'content'
+                          ? 'bg-indigo-600 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <FileText className="w-3 h-3 text-indigo-300" />
+                      <span>{isBn ? 'পোর্টাল টেক্সট ও নোটিশ' : 'Content & Notice'}</span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setSettingsSubSection('security')}
+                      className={`px-3 py-1.5 rounded-xl transition-all flex items-center gap-1.5 shrink-0 ${
+                        settingsSubSection === 'security'
+                          ? 'bg-purple-700 text-white shadow-md'
+                          : 'bg-white/5 text-white/60 hover:text-white hover:bg-white/10'
+                      }`}
+                    >
+                      <KeyRound className="w-3 h-3 text-purple-300" />
+                      <span>{isBn ? 'পাসওয়ার্ড সিকিউরিটি' : 'Security'}</span>
                     </button>
                   </div>
 
+                  {/* 1. LOGO OPTIONS & JPG SEALS MODULE */}
+                  {(settingsSubSection === 'all' || settingsSubSection === 'logo') && (
+                    <div className="bg-gradient-to-br from-blue-950/30 via-white/5 to-white/5 border-2 border-blue-500/30 rounded-2xl p-5 space-y-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 border-b border-white/10 pb-3">
+                        <div>
+                          <h5 className="font-bold text-sm text-blue-300 flex items-center gap-2">
+                            <Palette className="w-4 h-4 text-blue-400" />
+                            <span>{isBn ? '১. লোগো অপশন ও অফিসিয়াল JPG সিলমোহর' : '1. Logo Options & Official JPG Seals'}</span>
+                          </h5>
+                          <p className="text-xs text-white/60 mt-0.5">
+                            {isBn
+                              ? 'আপনার পোর্টালের জন্য সরাসরি JPG সিলমোহর নির্বাচন করুন, নিজের ডিভাইস থেকে JPG ফাইল আপলোড করুন অথবা কাস্টম লিঙ্ক দিন।'
+                              : 'Select high-resolution JPG official seals, upload your own JPG file from device, or use custom image URL.'}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[11px] px-3 py-1 rounded-full border font-mono font-bold ${
+                            formSettings.customLogoUrl
+                              ? 'text-emerald-300 bg-emerald-500/20 border-emerald-400/40'
+                              : 'text-blue-300 bg-blue-500/20 border-blue-400/40'
+                          }`}>
+                            {formSettings.customLogoUrl ? (isBn ? '✓ JPG ইমেজ সক্রিয়' : '✓ JPG Image Active') : (isBn ? 'ভেক্টর স্টাইল সক্রিয়' : 'Vector Style Active')}
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* Live Logo Preview Box */}
+                      <div className="bg-[#070719] border border-blue-400/30 rounded-2xl p-4 flex flex-col md:flex-row items-center justify-between gap-4 shadow-inner">
+                        <div className="flex flex-col sm:flex-row items-center gap-4 w-full md:w-auto">
+                          <div className="text-[11px] text-blue-300/80 uppercase font-mono tracking-wider shrink-0 bg-blue-500/10 px-2.5 py-1 rounded-lg border border-blue-500/20">
+                            {isBn ? 'হেডারে লাইভ প্রিভিউ:' : 'Header Live Preview:'}
+                          </div>
+                          <div className="p-2 rounded-xl bg-white/[0.04] border border-white/10 flex items-center justify-center">
+                            <BrandLogo
+                              style={formSettings.logoStyle || 'emblem_shield'}
+                              customLogoUrl={formSettings.customLogoUrl}
+                              portalName={formSettings.portalName}
+                              portalSubname={formSettings.portalSubname}
+                              tagline={isBn ? formSettings.taglineBn : formSettings.taglineEn}
+                              language={language}
+                            />
+                          </div>
+                        </div>
+
+                        <div className="flex items-center gap-2 self-end md:self-center">
+                          {formSettings.customLogoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormSettings({ ...formSettings, customLogoUrl: '' });
+                                setLogoUploadStatus(isBn ? 'কাস্টম ইমেজ বাতিল করে ভেক্টর মোডে ফিরে আসা হয়েছে।' : 'Reset to default vector logo.');
+                              }}
+                              className="px-3 py-1.5 text-xs text-amber-300 hover:text-white bg-amber-500/10 hover:bg-amber-500/20 border border-amber-500/30 rounded-xl transition-all"
+                            >
+                              {isBn ? 'রিসেট / ভেক্টর ব্যবহার' : 'Reset to Vector'}
+                            </button>
+                          )}
+                          <span className="text-emerald-400 font-semibold text-xs flex items-center gap-1.5 bg-emerald-500/10 px-3 py-1.5 rounded-xl border border-emerald-500/20">
+                            <CheckCircle2 className="w-3.5 h-3.5" />
+                            <span>{isBn ? 'ওয়েবসাইটে সক্রিয়' : 'Active on Live Site'}</span>
+                          </span>
+                        </div>
+                      </div>
+
+                      {/* SECTION A: 5 OFFICIAL JPG GOVERNMENT SEALS */}
+                      <div className="space-y-3 pt-1">
+                        <div className="flex items-center justify-between">
+                          <label className="text-xs font-bold text-blue-200 flex items-center gap-2">
+                            <ImageIcon className="w-4 h-4 text-blue-400" />
+                            <span>{isBn ? 'ক) অফিসিয়াল সরকারি JPG সিলমোহর (Official JPG Presets):' : 'A) Official Government JPG Seals:'}</span>
+                          </label>
+                          <span className="text-[10px] text-white/50">{isBn ? '১-ক্লিকে নির্বাচন করুন' : 'Click to apply instantly'}</span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                          {JPG_LOGO_PRESETS.map((preset) => {
+                            const isCurrent = formSettings.customLogoUrl === preset.url;
+                            return (
+                              <button
+                                key={preset.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormSettings({ ...formSettings, customLogoUrl: preset.url });
+                                  setLogoUploadStatus(isBn ? `✓ "${preset.nameBn}" নির্বাচিত হয়েছে! উপরে "সংরক্ষণ" চাপুন।` : `✓ Selected "${preset.nameEn}"! Click "Save Changes" above.`);
+                                }}
+                                className={`p-3 rounded-2xl border text-left transition-all relative flex items-start gap-3 group ${
+                                  isCurrent
+                                    ? 'bg-blue-600/25 border-blue-400 ring-2 ring-blue-400/50 shadow-lg shadow-blue-500/20'
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="w-12 h-12 rounded-xl bg-white p-1 border border-white/20 flex items-center justify-center shrink-0 shadow-sm overflow-hidden">
+                                  <img
+                                    src={preset.url}
+                                    alt={preset.nameEn}
+                                    className="w-full h-full object-contain"
+                                    referrerPolicy="no-referrer"
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-bold text-xs text-white truncate group-hover:text-blue-200">
+                                      {isBn ? preset.nameBn : preset.nameEn}
+                                    </span>
+                                    {isCurrent ? (
+                                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                                        <Check className="w-2.5 h-2.5" />
+                                      </span>
+                                    ) : (
+                                      <span className="text-[10px] px-1.5 py-0.5 rounded bg-white/10 text-white/60 shrink-0 font-mono">JPG</span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-white/50 leading-relaxed mt-0.5 line-clamp-1">
+                                    {isBn ? preset.descBn : preset.descEn}
+                                  </p>
+                                  <div className="mt-1.5">
+                                    <span className={`text-[10px] font-semibold ${isCurrent ? 'text-blue-300' : 'text-white/40 group-hover:text-blue-300'}`}>
+                                      {isCurrent ? (isBn ? '● বর্তমানে সক্রিয়' : '● Currently Active') : (isBn ? 'লোগো হিসেবে সেট করুন →' : 'Set as logo →')}
+                                    </span>
+                                  </div>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* SECTION B: UPLOAD JPG FILE FROM DEVICE */}
+                      <div className="space-y-2 pt-3 border-t border-white/10">
+                        <label className="text-xs font-bold text-emerald-200 flex items-center gap-2">
+                          <Upload className="w-4 h-4 text-emerald-400" />
+                          <span>{isBn ? 'খ) আপনার ডিভাইস থেকে সরাসরি JPG / PNG ফাইল আপলোড করুন:' : 'B) Direct JPG / PNG File Upload from Device:'}</span>
+                        </label>
+                        <p className="text-[11px] text-white/50">
+                          {isBn
+                            ? 'আপনার কম্পিউটার বা মোবাইল থেকে আপনার কেন্দ্র বা দপ্তরের যে কোনো JPG বা PNG লোগো ফাইল নির্বাচন করুন।'
+                            : 'Browse and select any high-res JPG or PNG logo file from your computer or mobile.'}
+                        </p>
+
+                        <div className="flex flex-col sm:flex-row items-center gap-3 bg-white/5 border border-dashed border-emerald-400/40 rounded-2xl p-4">
+                          <label className="cursor-pointer flex items-center gap-2 px-4 py-2.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded-xl text-xs font-bold shadow-md shadow-emerald-600/30 border border-emerald-400/30 transition-all shrink-0">
+                            <Upload className="w-3.5 h-3.5" />
+                            <span>{isBn ? 'JPG ছবি নির্বাচন করুন' : 'Browse JPG Image'}</span>
+                            <input
+                              type="file"
+                              accept="image/jpeg,image/jpg,image/png,image/webp"
+                              onChange={handleLogoFileUpload}
+                              className="hidden"
+                            />
+                          </label>
+                          <div className="text-xs text-white/60 text-center sm:text-left">
+                            <span>{isBn ? 'সমর্থিত ফরম্যাট: .jpg, .jpeg, .png, .webp (কোনো সার্ভার আপলোড ছাড়াই ব্রাউজারে সংরক্ষিত)' : 'Supported: .jpg, .jpeg, .png, .webp'}</span>
+                          </div>
+                        </div>
+
+                        {logoUploadStatus && (
+                          <div className="p-2.5 rounded-xl bg-emerald-500/15 border border-emerald-400/30 text-emerald-200 text-xs font-medium flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>{logoUploadStatus}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      {/* SECTION C: CUSTOM IMAGE URL */}
+                      <div className="space-y-2 pt-3 border-t border-white/10">
+                        <label className="block text-xs font-bold text-white/80">
+                          {isBn ? 'গ) কাস্টম লোগো ইমেজ লিঙ্ক (Web Image URL):' : 'C) Custom Logo Image Web URL:'}
+                        </label>
+                        <div className="flex flex-col sm:flex-row gap-2">
+                          <div className="relative flex-1">
+                            <ImageIcon className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-white/40" />
+                            <input
+                              type="url"
+                              value={formSettings.customLogoUrl || ''}
+                              onChange={(e) => setFormSettings({ ...formSettings, customLogoUrl: e.target.value })}
+                              placeholder="https://example.com/portal-seal.jpg"
+                              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-blue-400 focus:outline-hidden font-mono"
+                            />
+                          </div>
+                          {formSettings.customLogoUrl && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                setFormSettings({ ...formSettings, customLogoUrl: '' });
+                                setLogoUploadStatus('');
+                              }}
+                              className="px-3 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-xs font-semibold shrink-0"
+                            >
+                              {isBn ? 'ক্লিয়ার করুন' : 'Clear URL'}
+                            </button>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* SECTION D: VECTOR SVG STYLES (ALTERNATIVE) */}
+                      <div className="space-y-2 pt-3 border-t border-white/10">
+                        <label className="block text-xs font-bold text-white/80">
+                          {isBn ? 'ঘ) বিকল্প ভেক্টর SVG লোগো স্টাইল (৫টি ডিজাইন):' : 'D) Alternative Vector SVG Styles (5 Options):'}
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {LOGO_OPTIONS.map((opt) => {
+                            const isSelected = !formSettings.customLogoUrl && (formSettings.logoStyle || 'emblem_shield') === opt.id;
+                            return (
+                              <button
+                                key={opt.id}
+                                type="button"
+                                onClick={() => {
+                                  setFormSettings({ ...formSettings, logoStyle: opt.id, customLogoUrl: '' });
+                                  setLogoUploadStatus(isBn ? `✓ "${opt.nameBn}" ভেক্টর প্রতীক সক্রিয় করা হয়েছে!` : `✓ "${opt.nameEn}" vector style activated!`);
+                                }}
+                                className={`p-3 rounded-xl border text-left transition-all relative flex items-start gap-2.5 ${
+                                  isSelected
+                                    ? 'bg-blue-600/20 border-blue-400 ring-1 ring-blue-400/50 shadow-md shadow-blue-500/10'
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="p-1 rounded-lg bg-black/40 border border-white/10 shrink-0">
+                                  <BrandLogo
+                                    style={opt.id}
+                                    portalName=""
+                                    portalSubname=""
+                                    tagline=""
+                                    language={language}
+                                  />
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <div className="flex items-center justify-between gap-1">
+                                    <span className="font-bold text-xs text-white truncate">
+                                      {isBn ? opt.nameBn : opt.nameEn}
+                                    </span>
+                                    {isSelected && (
+                                      <span className="w-4 h-4 rounded-full bg-blue-500 text-white flex items-center justify-center shrink-0">
+                                        <Check className="w-2.5 h-2.5" />
+                                      </span>
+                                    )}
+                                  </div>
+                                  <p className="text-[11px] text-white/50 leading-relaxed mt-0.5">
+                                    {isBn ? opt.descBn : opt.descEn}
+                                  </p>
+                                </div>
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 2. HERO BANNER THEME & DESIGN MODULE */}
+                  {(settingsSubSection === 'all' || settingsSubSection === 'banner') && (
+                    <div className="bg-gradient-to-br from-emerald-950/20 via-white/5 to-white/5 border border-emerald-500/20 rounded-2xl p-5 space-y-4">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h5 className="font-bold text-sm text-emerald-300 flex items-center gap-2">
+                          <Sparkles className="w-4 h-4 text-emerald-400" />
+                          <span>{isBn ? '২. হিরো ব্যানার থিম ও ভিজ্যুয়াল ডিজাইন' : '2. Hero Banner Theme & Visual Styling'}</span>
+                        </h5>
+                        <span className="text-[11px] text-emerald-300/80 bg-emerald-500/10 px-2.5 py-0.5 rounded-full border border-emerald-500/20 font-mono">
+                          THEME: {formSettings.bannerTheme || 'aurora_gradient'}
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/60">
+                        {isBn
+                          ? 'হিরো ব্যানারের ৪টি নজরকাড়া আধুনিক গ্রেডিয়েন্ট থিম থেকে আপনার পছন্দের স্টাইল বাছাই করুন।'
+                          : 'Choose from 4 distinct atmospheric gradient themes for the top citizen service showcase banner.'}
+                      </p>
+
+                      {/* Theme Selector Cards */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+                        {BANNER_THEMES.map((th) => {
+                          const isSelected = (formSettings.bannerTheme || 'aurora_gradient') === th.id;
+                          return (
+                            <button
+                              key={th.id}
+                              type="button"
+                              onClick={() => setFormSettings({ ...formSettings, bannerTheme: th.id })}
+                              className={`p-3 rounded-xl border text-left transition-all relative overflow-hidden flex flex-col justify-between gap-2.5 ${
+                                isSelected
+                                  ? 'bg-emerald-600/20 border-emerald-400 ring-1 ring-emerald-400/50 shadow-md shadow-emerald-500/10'
+                                  : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                              }`}
+                            >
+                              {/* Swatch Preview Bar */}
+                              <div className="h-10 rounded-lg w-full relative overflow-hidden border border-white/20 shadow-inner flex items-center justify-center">
+                                <div className={`absolute inset-0 bg-gradient-to-r ${th.bgClass}`} />
+                                <div className="relative text-[10px] font-bold text-white tracking-wide uppercase drop-shadow-md">
+                                  {th.id.replace(/_/g, ' ')}
+                                </div>
+                              </div>
+
+                              <div className="space-y-1">
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold text-xs text-white">
+                                    {isBn ? th.nameBn : th.nameEn}
+                                  </span>
+                                  {isSelected && (
+                                    <span className="w-4 h-4 rounded-full bg-emerald-500 text-white flex items-center justify-center shrink-0">
+                                      <Check className="w-2.5 h-2.5" />
+                                    </span>
+                                  )}
+                                </div>
+                                <p className="text-[11px] text-white/50 leading-tight">
+                                  {isBn ? 'আধুনিক গ্রেডিয়েন্ট আবহ' : 'Modern gradient atmospheric style'}
+                                </p>
+                              </div>
+                            </button>
+                          );
+                        })}
+                      </div>
+
+                      {/* Headline & Subtitle Fields */}
+                      <div className="pt-2 border-t border-white/10 space-y-3">
+                        <label className="block text-xs font-bold text-white/80">
+                          {isBn ? 'ব্যানার হেডলাইন টেক্সট (বাংলা):' : 'Banner Headline Text (Bengali):'}
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5">
+                          <div>
+                            <span className="block text-[10px] text-white/50 mb-0.5">শুরু (Prefix)</span>
+                            <input
+                              type="text"
+                              value={formSettings.heroHeadlinePreBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, heroHeadlinePreBn: e.target.value })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-emerald-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <span className="block text-[10px] text-emerald-300 font-bold mb-0.5">হাইলাইট (Highlight)</span>
+                            <input
+                              type="text"
+                              value={formSettings.heroHeadlineHighlightBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, heroHeadlineHighlightBn: e.target.value })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-emerald-400/40 bg-white/5 text-emerald-300 font-bold text-xs focus:border-emerald-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <span className="block text-[10px] text-white/50 mb-0.5">শেষ (Postfix)</span>
+                            <input
+                              type="text"
+                              value={formSettings.heroHeadlinePostBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, heroHeadlinePostBn: e.target.value })}
+                              className="w-full px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-emerald-400 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <span className="block text-[10px] text-white/50 mb-0.5">হিরো সাবটাইটেল বর্ণনা (বাংলা)</span>
+                          <textarea
+                            rows={2}
+                            value={formSettings.heroSubtitleBn}
+                            onChange={(e) => setFormSettings({ ...formSettings, heroSubtitleBn: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-emerald-400 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 3. PAYMENT GATEWAY FULL OPTIONS MODULE */}
+                  {(settingsSubSection === 'all' || settingsSubSection === 'gateway') && (
+                    <div className="bg-gradient-to-br from-amber-950/20 via-white/5 to-white/5 border border-amber-500/20 rounded-2xl p-5 space-y-5">
+                      <div className="flex flex-wrap items-center justify-between gap-2">
+                        <h5 className="font-bold text-sm text-amber-300 flex items-center gap-2">
+                          <CreditCard className="w-4 h-4 text-amber-400" />
+                          <span>{isBn ? '৩. পেমেন্ট গেটওয়ে সব অপশন ও কনফিগারেশন' : '3. Payment Gateway Engine & Multi-Method Options'}</span>
+                        </h5>
+                        <div className="flex items-center gap-2">
+                          <span className={`text-[10px] font-mono font-bold px-2.5 py-0.5 rounded-full border ${
+                            currentGateway.gatewayMode === 'production'
+                              ? 'bg-emerald-500/20 text-emerald-300 border-emerald-400/30'
+                              : 'bg-amber-500/20 text-amber-300 border-amber-400/30'
+                          }`}>
+                            MODE: {currentGateway.gatewayMode.toUpperCase()}
+                          </span>
+                          <span className="text-[10px] font-mono text-white/80 bg-white/10 px-2 py-0.5 rounded-full border border-white/10 uppercase">
+                            {currentGateway.activeProvider || 'razorpay'}
+                          </span>
+                        </div>
+                      </div>
+                      
+                      <p className="text-xs text-white/60">
+                        {isBn
+                          ? 'পেমেন্ট গেটওয়ে প্রোভাইডার, ইউপিআই কিউআর কোড, পরিবেশ মোড (সিমুলেটর/লাইভ) এবং ৬টি পেমেন্ট মেথড সক্রিয় বা নিষ্ক্রিয় করুন।'
+                          : 'Configure active gateway providers, merchant UPI VPA, environment modes, and toggle all 6 payment channels.'}
+                      </p>
+
+                      {/* A. Gateway Mode Switcher */}
+                      <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 space-y-2">
+                        <label className="block text-xs font-bold text-white/90">
+                          {isBn ? 'গেটওয়ে এনভায়রনমেন্ট মোড (Environment Mode):' : 'Gateway Environment Mode:'}
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <button
+                            type="button"
+                            onClick={() => updateGateway({ gatewayMode: 'simulator' })}
+                            className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2.5 ${
+                              currentGateway.gatewayMode === 'simulator'
+                                ? 'bg-amber-500/20 border-amber-400 ring-1 ring-amber-400/50 text-white'
+                                : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="w-4 h-4 rounded-full border border-amber-400 flex items-center justify-center mt-0.5 shrink-0">
+                              {currentGateway.gatewayMode === 'simulator' && (
+                                <div className="w-2 h-2 rounded-full bg-amber-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-bold text-xs text-white">
+                                {isBn ? 'সিমুলেটর টেস্টিং মোড (Simulator Sandbox)' : 'Simulator Test Mode'}
+                              </div>
+                              <p className="text-[11px] text-white/50 mt-0.5">
+                                {isBn ? 'ডেমো ও দ্রুত টেস্টিং মোড - সুরক্ষিত ট্র্যাকিং নম্বর সহ সফল পেমেন্ট সিমুলেশন।' : 'Demo test mode with instantaneous mock receipts and zero bank charges.'}
+                              </p>
+                            </div>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => updateGateway({ gatewayMode: 'production' })}
+                            className={`p-2.5 rounded-xl border text-left transition-all flex items-start gap-2.5 ${
+                              currentGateway.gatewayMode === 'production'
+                                ? 'bg-emerald-500/20 border-emerald-400 ring-1 ring-emerald-400/50 text-white'
+                                : 'bg-white/5 border-white/10 text-white/60 hover:bg-white/10'
+                            }`}
+                          >
+                            <div className="w-4 h-4 rounded-full border border-emerald-400 flex items-center justify-center mt-0.5 shrink-0">
+                              {currentGateway.gatewayMode === 'production' && (
+                                <div className="w-2 h-2 rounded-full bg-emerald-400" />
+                              )}
+                            </div>
+                            <div>
+                              <div className="font-bold text-xs text-white">
+                                {isBn ? 'লাইভ প্রোডাকশন গেটওয়ে (Production Live)' : 'Live Production Mode'}
+                              </div>
+                              <p className="text-[11px] text-white/50 mt-0.5">
+                                {isBn ? 'আসল ব্যাংক অ্যাকাউন্ট সেটেলমেন্ট ও লাইভ অনলাইন নাগরিক ফি কালেকশন।' : 'Real bank settlement & live payment verification through integrated provider.'}
+                              </p>
+                            </div>
+                          </button>
+                        </div>
+                      </div>
+
+                      {/* B. Primary Gateway Provider */}
+                      <div className="space-y-2">
+                        <label className="block text-xs font-bold text-white/90">
+                          {isBn ? 'মূল পেমেন্ট গেটওয়ে প্রোভাইডার নির্বাচন করুন:' : 'Select Primary Payment Gateway Provider:'}
+                        </label>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {GATEWAY_PROVIDERS.map((prov) => {
+                            const isSelected = (currentGateway.activeProvider || 'razorpay') === prov.id;
+                            return (
+                              <button
+                                key={prov.id}
+                                type="button"
+                                onClick={() => updateGateway({ activeProvider: prov.id })}
+                                className={`p-3 rounded-xl border text-left transition-all relative flex flex-col justify-between gap-2 ${
+                                  isSelected
+                                    ? 'bg-amber-600/20 border-amber-400 ring-1 ring-amber-400/50 shadow-md shadow-amber-500/10'
+                                    : 'bg-white/5 border-white/10 hover:bg-white/10 hover:border-white/20'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1">
+                                  <span className="font-bold text-xs text-white">
+                                    {prov.name}
+                                  </span>
+                                  <span className="text-[9px] font-mono font-bold bg-white/10 text-amber-300 px-1.5 py-0.5 rounded-sm">
+                                    {prov.badge}
+                                  </span>
+                                </div>
+                                <p className="text-[11px] text-white/50 leading-snug">
+                                  {isBn ? prov.descBn : prov.descEn}
+                                </p>
+                                {isSelected && (
+                                  <div className="flex items-center gap-1 text-[10px] text-amber-300 font-bold mt-1">
+                                    <CheckCircle2 className="w-3 h-3" />
+                                    <span>{isBn ? 'সক্রিয় গেটওয়ে' : 'Active Gateway'}</span>
+                                  </div>
+                                )}
+                              </button>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* C. Merchant Account Configuration */}
+                      <div className="bg-white/5 border border-white/10 rounded-xl p-4 space-y-3">
+                        <h6 className="text-xs font-bold text-amber-300 flex items-center gap-1.5">
+                          <Sliders className="w-3.5 h-3.5" />
+                          <span>{isBn ? 'মার্চেন্ট অ্যাকাউন্ট ও এপিআই সেটিংস' : 'Merchant Account & API Credentials'}</span>
+                        </h6>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'মার্চেন্ট UPI ID / VPA *' : 'Merchant UPI ID / VPA *'}
+                            </label>
+                            <div className="relative">
+                              <QrCode className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-emerald-400" />
+                              <input
+                                type="text"
+                                value={currentGateway.merchantUpiId}
+                                onChange={(e) => updateGateway({ merchantUpiId: e.target.value })}
+                                placeholder="ezyseva.pay@gov.in"
+                                className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/15 bg-white/5 text-emerald-300 text-xs focus:border-amber-400 focus:outline-hidden font-mono font-bold"
+                              />
+                            </div>
+                            <span className="text-[10px] text-white/40 mt-1 block">
+                              {isBn ? 'চেকআউটে নাগরিকরা এই ইউপিআই আইডিতে সরাসরি স্ক্যান করে পেমেন্ট করবে।' : 'Used for dynamic QR codes generated during checkout.'}
+                            </span>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'মার্চেন্ট / ব্যবসা প্রতিষ্ঠানের নাম' : 'Merchant / Business Display Name'}
+                            </label>
+                            <input
+                              type="text"
+                              value={currentGateway.merchantName || ''}
+                              onChange={(e) => updateGateway({ merchantName: e.target.value })}
+                              placeholder="EzySeva Digital Services Ltd"
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-amber-400 focus:outline-hidden"
+                            />
+                            <span className="text-[10px] text-white/40 mt-1 block">
+                              {isBn ? 'ব্যাংক চালানে প্রদর্শিত প্রাপকের নাম।' : 'Beneficiary name shown on bank receipts.'}
+                            </span>
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'গেটওয়ে এপিআই কি / ক্লায়েন্ট আইডি' : 'Gateway API Key / Client ID'}
+                            </label>
+                            <div className="relative">
+                              <input
+                                type={showMerchantKey ? 'text' : 'password'}
+                                value={currentGateway.merchantKey || ''}
+                                onChange={(e) => updateGateway({ merchantKey: e.target.value })}
+                                placeholder="rzp_live_xxxxxxxxxxxxxx"
+                                className="w-full px-3 py-2 pr-10 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-amber-400 focus:outline-hidden font-mono"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => setShowMerchantKey(!showMerchantKey)}
+                                className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1"
+                              >
+                                {showMerchantKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                              </button>
+                            </div>
+                          </div>
+
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'পেমেন্ট হেল্পলাইন ফোন' : 'Payment Support Phone'}
+                            </label>
+                            <input
+                              type="text"
+                              value={currentGateway.supportPhone || ''}
+                              onChange={(e) => updateGateway({ supportPhone: e.target.value })}
+                              placeholder="1800-399-7382"
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-amber-400 focus:outline-hidden font-mono"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* D. 6 Payment Methods Activation Toggles */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <label className="block text-xs font-bold text-white/90">
+                            {isBn ? '৬টি পেমেন্ট মেথড সক্রিয় / নিষ্ক্রিয় করার অপশন:' : 'Toggle 6 Payment Methods (All Channels):'}
+                          </label>
+                          <span className="text-[11px] text-white/50">
+                            {isBn ? 'অন/অফ টগল সুইচ' : 'On/Off Switches'}
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5">
+                          {PAYMENT_METHODS_LIST.map((pm) => {
+                            const isEnabled = currentGateway[pm.key] !== false;
+                            return (
+                              <div
+                                key={pm.key}
+                                className={`p-3 rounded-xl border transition-all flex flex-col justify-between gap-2.5 ${
+                                  isEnabled
+                                    ? 'bg-white/8 border-amber-400/40 shadow-sm'
+                                    : 'bg-white/[0.02] border-white/5 opacity-60'
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  <span className="font-bold text-xs text-white flex items-center gap-1.5">
+                                    <CheckCircle2 className={`w-3.5 h-3.5 ${isEnabled ? 'text-emerald-400' : 'text-white/20'}`} />
+                                    <span>{isBn ? pm.nameBn : pm.nameEn}</span>
+                                  </span>
+
+                                  {/* Toggle Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => updateGateway({ [pm.key]: !isEnabled })}
+                                    className={`w-10 h-5 rounded-full p-0.5 transition-colors relative shrink-0 ${
+                                      isEnabled ? 'bg-emerald-600' : 'bg-white/20'
+                                    }`}
+                                  >
+                                    <div
+                                      className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                                        isEnabled ? 'translate-x-5' : 'translate-x-0'
+                                      }`}
+                                    />
+                                  </button>
+                                </div>
+
+                                <p className="text-[11px] text-white/50 leading-tight">
+                                  {isBn ? pm.descBn : pm.descEn}
+                                </p>
+
+                                <div className="text-[10px] font-semibold flex items-center justify-between pt-1 border-t border-white/5">
+                                  <span className="text-white/40">Status</span>
+                                  <span className={isEnabled ? 'text-emerald-400' : 'text-rose-400'}>
+                                    {isEnabled ? (isBn ? 'সক্রিয় (Active)' : 'Active') : (isBn ? 'বন্ধ (Disabled)' : 'Disabled')}
+                                  </span>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+
+                      {/* E. Financial Rules */}
+                      <div className="bg-black/30 border border-white/10 rounded-xl p-3.5 grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="flex items-start justify-between gap-3 p-2 bg-white/5 rounded-lg border border-white/5">
+                          <div>
+                            <div className="font-bold text-xs text-white">
+                              {isBn ? '০% কনভেনিয়েন্স ফি (বিনামূল্যে সেবা)' : 'Zero Convenience Fee Mode'}
+                            </div>
+                            <p className="text-[11px] text-white/50 mt-0.5">
+                              {isBn ? 'নাগরিকদের জন্য পোর্টাল সার্ভিস চার্জ সম্পূর্ণ মকুব করুন।' : 'Waive portal convenience charge for citizens.'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateGateway({ zeroConvenienceFee: !currentGateway.zeroConvenienceFee })}
+                            className={`w-10 h-5 rounded-full p-0.5 transition-colors relative shrink-0 mt-1 ${
+                              currentGateway.zeroConvenienceFee ? 'bg-emerald-600' : 'bg-white/20'
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                                currentGateway.zeroConvenienceFee ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+
+                        <div className="flex items-start justify-between gap-3 p-2 bg-white/5 rounded-lg border border-white/5">
+                          <div>
+                            <div className="font-bold text-xs text-white">
+                              {isBn ? 'ইনস্ট্যান্ট অটো-ভেরিফিকেশন' : 'Instant Auto-Verification'}
+                            </div>
+                            <p className="text-[11px] text-white/50 mt-0.5">
+                              {isBn ? 'পেমেন্ট সম্পন্ন হলে তাৎক্ষণিক ট্র্যাকিং নম্বর ও রসিদ জারি।' : 'Instantly generate tracking ID upon payment confirmation.'}
+                            </p>
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => updateGateway({ autoVerify: !currentGateway.autoVerify })}
+                            className={`w-10 h-5 rounded-full p-0.5 transition-colors relative shrink-0 mt-1 ${
+                              currentGateway.autoVerify !== false ? 'bg-emerald-600' : 'bg-white/20'
+                            }`}
+                          >
+                            <div
+                              className={`w-4 h-4 rounded-full bg-white transition-transform ${
+                                currentGateway.autoVerify !== false ? 'translate-x-5' : 'translate-x-0'
+                              }`}
+                            />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 4. PORTAL BRANDING & CONTENT MODULE */}
+                  {(settingsSubSection === 'all' || settingsSubSection === 'content') && (
+                    <div className="space-y-4">
+                      {/* Portal Branding Block */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                        <h5 className="font-bold text-sm text-purple-300 flex items-center gap-2">
+                          <Sliders className="w-4 h-4" />
+                          <span>{isBn ? 'পোর্টাল নাম ও ট্যাগলাইন' : 'Portal Name & Tagline'}</span>
+                        </h5>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">Portal Name</label>
+                            <input
+                              type="text"
+                              value={formSettings.portalName}
+                              onChange={(e) => setFormSettings({ ...formSettings, portalName: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">Suffix / Sub-label</label>
+                            <input
+                              type="text"
+                              value={formSettings.portalSubname}
+                              onChange={(e) => setFormSettings({ ...formSettings, portalSubname: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">ট্যাগলাইন (বাংলা)</label>
+                            <input
+                              type="text"
+                              value={formSettings.taglineBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, taglineBn: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">Tagline (English)</label>
+                            <input
+                              type="text"
+                              value={formSettings.taglineEn}
+                              onChange={(e) => setFormSettings({ ...formSettings, taglineEn: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Live Announcement Marquee Banner */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                        <h5 className="font-bold text-sm text-blue-300 flex items-center gap-2">
+                          <AlertCircle className="w-4 h-4" />
+                          <span>{isBn ? 'লাইভ এলার্ট নোটিশ (জরুরি ঘোষণা বার)' : 'Live Emergency Announcement Bar'}</span>
+                        </h5>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">নোটিশ টেক্সট (বাংলা)</label>
+                            <input
+                              type="text"
+                              value={formSettings.noticeAlertBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, noticeAlertBn: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">Notice Text (English)</label>
+                            <input
+                              type="text"
+                              value={formSettings.noticeAlertEn}
+                              onChange={(e) => setFormSettings({ ...formSettings, noticeAlertEn: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Helpline & Contact Details */}
+                      <div className="bg-white/5 border border-white/10 rounded-2xl p-5 space-y-4">
+                        <h5 className="font-bold text-sm text-amber-300 flex items-center gap-2">
+                          <PhoneCall className="w-4 h-4" />
+                          <span>{isBn ? 'হেল্পলাইন ও সরকারি যোগাযোগ তথ্য' : 'Helpline & Official Contacts'}</span>
+                        </h5>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">টোল-ফ্রি নম্বর</label>
+                            <input
+                              type="text"
+                              value={formSettings.tollFreePhone}
+                              onChange={(e) => setFormSettings({ ...formSettings, tollFreePhone: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">সাহায্যের সময়সীমা</label>
+                            <input
+                              type="text"
+                              value={formSettings.helpdeskTimingsBn}
+                              onChange={(e) => setFormSettings({ ...formSettings, helpdeskTimingsBn: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">সাপোর্ট ইমেইল</label>
+                            <input
+                              type="email"
+                              value={formSettings.supportEmail}
+                              onChange={(e) => setFormSettings({ ...formSettings, supportEmail: e.target.value })}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div>
+                          <label className="block text-xs font-bold text-white/80 mb-1">রাজ্য কার্যালয় ঠিকানা</label>
+                          <input
+                            type="text"
+                            value={formSettings.officeAddressBn}
+                            onChange={(e) => setFormSettings({ ...formSettings, officeAddressBn: e.target.value })}
+                            className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden"
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  )}
+
+                  {/* 5. ADMIN SECURITY & PASSWORD MODULE */}
+                  {(settingsSubSection === 'all' || settingsSubSection === 'security') && (
+                    <div className="bg-purple-950/20 border border-purple-500/30 rounded-2xl p-5 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h5 className="font-bold text-sm text-purple-300 flex items-center gap-2">
+                          <KeyRound className="w-4 h-4 text-purple-300" />
+                          <span>{isBn ? 'অ্যাডমিন সিকিউরিটি ও পাসওয়ার্ড পরিবর্তন' : 'Admin Security & Password Management'}</span>
+                        </h5>
+                        <span className="text-[10px] font-mono text-purple-300 bg-purple-500/20 px-2 py-0.5 rounded-full border border-purple-400/30">
+                          CONFIDENTIAL
+                        </span>
+                      </div>
+                      <p className="text-xs text-white/60">
+                        {isBn
+                          ? 'আপনার অ্যাডমিন লগইন আইডি ও পাসওয়ার্ড এখানে পরিবর্তন করুন। এটি কঠোরভাবে গোপন রাখা হয় এবং অন্য কোনো ব্যবহারকারী দেখতে পাবে না।'
+                          : 'Change your admin credentials securely. Passwords are masked and never exposed to public visitors.'}
+                      </p>
+
+                      {changeCredsStatus && (
+                        <div
+                          className={`text-xs p-3 rounded-xl flex items-center gap-2 ${
+                            changeCredsStatus.isError
+                              ? 'text-red-300 bg-red-500/15 border border-red-500/30'
+                              : 'text-emerald-300 bg-emerald-500/15 border border-emerald-500/30'
+                          }`}
+                        >
+                          {changeCredsStatus.isError ? (
+                            <AlertCircle className="w-4 h-4 shrink-0 text-red-400" />
+                          ) : (
+                            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-400" />
+                          )}
+                          <span>{changeCredsStatus.msg}</span>
+                        </div>
+                      )}
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'নতুন অ্যাডমিন আইডি (ঐচ্ছিক)' : 'New Admin ID (Optional)'}
+                          </label>
+                          <input
+                            type="text"
+                            value={newAdminId}
+                            onChange={(e) => setNewAdminId(e.target.value)}
+                            placeholder={adminCreds.adminId}
+                            className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
+                          />
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'বর্তমান পাসওয়ার্ড *' : 'Current Password *'}
+                          </label>
+                          <input
+                            type="password"
+                            value={currentAdminPass}
+                            onChange={(e) => setCurrentAdminPass(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'নতুন গোপন পাসওয়ার্ড *' : 'New Password *'}
+                          </label>
+                          <div className="relative">
+                            <input
+                              type={showNewPass ? 'text' : 'password'}
+                              value={newAdminPass}
+                              onChange={(e) => setNewAdminPass(e.target.value)}
+                              placeholder="••••••••"
+                              className="w-full px-3 py-2 pr-10 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => setShowNewPass((prev) => !prev)}
+                              className="absolute right-2.5 top-1/2 -translate-y-1/2 text-white/40 hover:text-white p-1"
+                            >
+                              {showNewPass ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                            </button>
+                          </div>
+                        </div>
+                        <div>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'নতুন পাসওয়ার্ড নিশ্চিত করুন *' : 'Confirm New Password *'}
+                          </label>
+                          <input
+                            type="password"
+                            value={confirmNewAdminPass}
+                            onChange={(e) => setConfirmNewAdminPass(e.target.value)}
+                            placeholder="••••••••"
+                            className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-purple-400 focus:outline-hidden font-mono"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="flex flex-wrap items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={handleUpdateAdminCredentials}
+                          className="px-4 py-2 bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs rounded-xl border border-purple-400/30 transition-all flex items-center gap-1.5 cursor-pointer shadow-md shadow-purple-600/20"
+                        >
+                          <KeyRound className="w-3.5 h-3.5" />
+                          <span>{isBn ? 'অ্যাডমিন পাসওয়ার্ড পরিবর্তন করুন' : 'Update Admin Password'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (window.confirm(isBn ? 'আপনি কি নিশ্চিত যে অ্যাডমিন আইডি ও পাসওয়ার্ড ডিফল্ট (admin / admin)-এ রিসেট করতে চান?' : 'Are you sure you want to reset admin credentials to default (admin / admin)?')) {
+                              handleResetAdminCredentialsToDefault();
+                              setChangeCredsStatus({
+                                msg: isBn ? 'অ্যাডমিন ক্রেডেনশিয়াল সফলভাবে ফ্যাক্টরি ডিফল্টে (admin / admin) রিসেট করা হয়েছে!' : 'Admin credentials reset to factory default (admin / admin)!',
+                                isError: false,
+                              });
+                            }
+                          }}
+                          className="px-3 py-2 bg-white/5 hover:bg-white/10 text-white/70 hover:text-white font-medium text-xs rounded-xl border border-white/10 transition-all flex items-center gap-1.5 cursor-pointer"
+                        >
+                          <RotateCcw className="w-3.5 h-3.5" />
+                          <span>{isBn ? 'ফ্যাক্টরি ডিফল্ট রিসেট (admin / admin)' : 'Reset to Default (admin / admin)'}</span>
+                        </button>
+                      </div>
+                    </div>
+                  )}
+
                   <button
                     type="submit"
-                    className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-xl shadow-purple-600/30 border border-purple-400/30 transition-all flex items-center justify-center gap-2"
+                    className="w-full py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-sm shadow-xl shadow-purple-600/30 border border-purple-400/30 transition-all flex items-center justify-center gap-2 cursor-pointer"
                   >
                     <Save className="w-4 h-4" />
                     <span>{isBn ? 'সমস্ত পরিবর্তন সংরক্ষণ করুন (লাইভ আপডেট)' : 'Publish All Changes (Live)'}</span>
@@ -931,118 +2068,212 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   </div>
 
-                  {/* Add New Service Modal / Box */}
+                  {/* Service Action Notification Banner */}
+                  {serviceNotification && (
+                    <div className="p-3.5 bg-emerald-500/20 border-2 border-emerald-400/60 text-emerald-200 text-xs font-bold rounded-2xl flex items-center justify-between gap-3 shadow-lg shadow-emerald-950/30 animate-in fade-in">
+                      <div className="flex items-center gap-2.5">
+                        <CheckCircle2 className="w-5 h-5 text-emerald-400 shrink-0" />
+                        <span>{serviceNotification}</span>
+                      </div>
+                      <button
+                        type="button"
+                        onClick={() => setServiceNotification('')}
+                        className="text-emerald-300 hover:text-white p-1"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  {/* Add New Service Form Modal / Card */}
                   {isAddingNewService && (
-                    <div className="bg-white/5 border-2 border-emerald-400/40 rounded-2xl p-5 space-y-4 animate-in fade-in duration-200">
+                    <div className="bg-gradient-to-br from-emerald-950/30 via-white/5 to-white/5 border-2 border-emerald-400/50 rounded-2xl p-5 space-y-4 animate-in fade-in duration-200 shadow-xl shadow-emerald-950/30">
                       <div className="flex items-center justify-between border-b border-white/10 pb-3">
                         <h5 className="font-bold text-sm text-emerald-300 flex items-center gap-2">
-                          <Plus className="w-4 h-4" />
-                          <span>{isBn ? 'নতুন সরকারি পরিষেবা যোগ করুন' : 'Create New Citizen Service'}</span>
+                          <PlusCircle className="w-4 h-4 text-emerald-400" />
+                          <span>{isBn ? 'নতুন সরকারি পরিষেবা তৈরি ও যুক্ত করুন' : 'Create & Register New Citizen Service'}</span>
                         </h5>
                         <button
+                          type="button"
                           onClick={() => setIsAddingNewService(false)}
-                          className="text-white/60 hover:text-white"
+                          className="text-white/60 hover:text-white p-1"
                         >
                           <X className="w-4 h-4" />
                         </button>
                       </div>
 
-                      <form onSubmit={handleCreateNewService} className="space-y-3">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                      <form onSubmit={handleCreateNewService} className="space-y-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5">
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">নাম (বাংলা) *</label>
+                            <label className="block text-xs font-bold text-white/90 mb-1">
+                              {isBn ? 'পরিষেবার নাম (বাংলা) *' : 'Service Title (Bengali) *'}
+                            </label>
                             <input
                               type="text"
                               required
                               value={newService.titleBn || ''}
                               onChange={(e) => setNewService({ ...newService, titleBn: e.target.value })}
-                              placeholder="যেমন: নতুন কাস্ট সার্টিফিকেট আবেদন"
-                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-emerald-400 focus:outline-hidden"
+                              placeholder={isBn ? 'যেমন: ডিজিটাল রেশন কার্ড সংশোধন' : 'e.g. ডিজিটাল রেশন কার্ড সংশোধন'}
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/5 text-white text-xs focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-hidden"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">Title (English) *</label>
+                            <label className="block text-xs font-bold text-white/90 mb-1">
+                              {isBn ? 'Service Title (English) *' : 'Service Title (English) *'}
+                            </label>
                             <input
                               type="text"
                               required
                               value={newService.titleEn || ''}
                               onChange={(e) => setNewService({ ...newService, titleEn: e.target.value })}
-                              placeholder="e.g. Caste Certificate Application"
-                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-emerald-400 focus:outline-hidden"
+                              placeholder="e.g. Digital Ration Card Correction"
+                              className="w-full px-3.5 py-2.5 rounded-xl border border-white/20 bg-white/5 text-white text-xs focus:border-emerald-400 focus:ring-1 focus:ring-emerald-400 focus:outline-hidden"
                             />
                           </div>
                         </div>
 
-                        <div className="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">ক্যাটাগরি</label>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'ক্যাটাগরি' : 'Category'}
+                            </label>
                             <select
                               value={newService.category}
                               onChange={(e) => setNewService({ ...newService, category: e.target.value as any })}
-                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden"
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-[#0e0e24] text-white text-xs focus:outline-hidden"
                             >
-                              <option value="identity" className="bg-[#0e0e24] text-white">Identity & Cards</option>
-                              <option value="certificates" className="bg-[#0e0e24] text-white">Certificates</option>
-                              <option value="bills" className="bg-[#0e0e24] text-white">Utility Bills</option>
-                              <option value="schemes" className="bg-[#0e0e24] text-white">Welfare Schemes</option>
-                              <option value="land" className="bg-[#0e0e24] text-white">Land & Revenue</option>
-                              <option value="banking" className="bg-[#0e0e24] text-white">Banking & Cash</option>
+                              <option value="identity">Identity & Cards (পরিচয় ও কার্ড)</option>
+                              <option value="certificates">Certificates (সনদপত্র ও প্রমাণ্য)</option>
+                              <option value="bills">Utility Bills (বিদ্যুৎ ও জল বিল)</option>
+                              <option value="schemes">Welfare Schemes (সরকারি অনুদান)</option>
+                              <option value="land">Land & Revenue (জমি ও রাজস্ব)</option>
+                              <option value="banking">Banking & Cash (ব্যাংকিং ও ক্যাশ)</option>
+                              <option value="legal">Legal & Affidavits (আইনি ও নোটারি)</option>
+                              <option value="education">Education (শিক্ষা ও বৃত্তি)</option>
                             </select>
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">সরকারি ফি (Govt Fee ₹)</label>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'সরকারি ফি (Govt Fee ₹)' : 'Official Govt Fee (₹)'}
+                            </label>
                             <input
                               type="number"
+                              min="0"
                               value={newService.govtFee || 0}
                               onChange={(e) => setNewService({ ...newService, govtFee: Number(e.target.value) })}
                               className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden font-mono"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">কিয়স্ক চার্জ (Kiosk Fee ₹)</label>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'কিয়স্ক চার্জ (Kiosk Fee ₹)' : 'Kiosk Service Charge (₹)'}
+                            </label>
                             <input
                               type="number"
-                              value={newService.convenienceFee || 40}
+                              min="0"
+                              value={newService.convenienceFee ?? 40}
                               onChange={(e) => setNewService({ ...newService, convenienceFee: Number(e.target.value) })}
                               className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden font-mono"
                             />
                           </div>
                           <div>
-                            <label className="block text-xs font-bold text-white/80 mb-1">SLA সময়সীমা</label>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'বিতরণ সময়সীমা (SLA)' : 'Delivery Timeline (SLA)'}
+                            </label>
                             <input
                               type="text"
-                              value={newService.slaDaysBn || '৭-১০ দিন'}
+                              value={newService.slaDaysBn || '৭-১০ কার্যদিবস'}
                               onChange={(e) => setNewService({ ...newService, slaDaysBn: e.target.value, slaDays: e.target.value })}
+                              placeholder="৭-১০ কার্যদিবস"
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden"
+                            />
+                          </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'প্রদানকারী সরকারি দপ্তর / কর্তৃপক্ষ' : 'Issuing Department / Authority'}
+                            </label>
+                            <input
+                              type="text"
+                              value={newService.officialGovtBodyBn || ''}
+                              onChange={(e) => setNewService({
+                                ...newService,
+                                officialGovtBodyBn: e.target.value,
+                                officialGovtBodyEn: e.target.value,
+                              })}
+                              placeholder={isBn ? 'যেমন: খাদ্য ও সরবরাহ দপ্তর, পশ্চিমবঙ্গ' : 'e.g. Dept of Food & Supplies'}
+                              className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden"
+                            />
+                          </div>
+                          <div>
+                            <label className="block text-xs font-bold text-white/80 mb-1">
+                              {isBn ? 'প্রয়োজনীয় কাগজপত্র (কমা দিয়ে আলাদা করুন)' : 'Required Documents (comma-separated)'}
+                            </label>
+                            <input
+                              type="text"
+                              value={(newService.requiredDocsBn || []).join(', ')}
+                              onChange={(e) => {
+                                const list = e.target.value.split(',').map((s) => s.trim()).filter(Boolean);
+                                setNewService({
+                                  ...newService,
+                                  requiredDocsBn: list.length > 0 ? list : ['আধার কার্ড'],
+                                  requiredDocsEn: list.length > 0 ? list : ['Aadhaar Card'],
+                                });
+                              }}
+                              placeholder={isBn ? 'আধার কার্ড, পাসপোর্ট ছবি, বিদ্যুৎ বিল' : 'Aadhaar Card, Photo, Utility Bill'}
                               className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden"
                             />
                           </div>
                         </div>
 
                         <div>
-                          <label className="block text-xs font-bold text-white/80 mb-1">সংক্ষিপ্ত বিবরণ (বাংলা)</label>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'সংক্ষিপ্ত বিবরণ (বাংলা)' : 'Short Description (Bengali)'}
+                          </label>
                           <textarea
                             rows={2}
                             value={newService.shortDescBn || ''}
-                            onChange={(e) => setNewService({ ...newService, shortDescBn: e.target.value })}
-                            placeholder="এই পরিষেবার মাধ্যমে নাগরিকরা কী সুবিধা পাবেন..."
+                            onChange={(e) => setNewService({
+                              ...newService,
+                              shortDescBn: e.target.value,
+                              shortDescEn: e.target.value,
+                            })}
+                            placeholder={isBn ? 'এই পরিষেবার মাধ্যমে নাগরিকরা কী সুবিধা পাবেন...' : 'Brief summary of the citizen service...'}
                             className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:outline-hidden"
                           />
                         </div>
 
-                        <div className="flex items-center justify-end gap-2 pt-2">
-                          <button
-                            type="button"
-                            onClick={() => setIsAddingNewService(false)}
-                            className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs"
-                          >
-                            {isBn ? 'বাতিল' : 'Cancel'}
-                          </button>
-                          <button
-                            type="submit"
-                            className="px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-md"
-                          >
-                            {isBn ? 'সেবা সেভ করুন' : 'Save Service'}
-                          </button>
+                        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+                          <label className="flex items-center gap-2 cursor-pointer">
+                            <input
+                              type="checkbox"
+                              checked={!!newService.isPopular}
+                              onChange={(e) => setNewService({ ...newService, isPopular: e.target.checked })}
+                              className="w-4 h-4 rounded text-emerald-600 focus:ring-emerald-500 bg-white/10 border-white/20"
+                            />
+                            <span className="text-xs text-white/80 font-medium">
+                              {isBn ? 'নাগরিকদের কাছে জনপ্রিয় (Featured Service) হিসেবে চিহ্নিত করুন' : 'Mark as Popular / Featured Service'}
+                            </span>
+                          </label>
+
+                          <div className="flex items-center gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setIsAddingNewService(false)}
+                              className="px-4 py-2 rounded-xl bg-white/10 hover:bg-white/20 text-white text-xs"
+                            >
+                              {isBn ? 'বাতিল' : 'Cancel'}
+                            </button>
+                            <button
+                              type="submit"
+                              className="flex items-center gap-1.5 px-5 py-2 rounded-xl bg-emerald-600 hover:bg-emerald-500 text-white font-bold text-xs shadow-lg shadow-emerald-600/30 transition-all cursor-pointer"
+                            >
+                              <Plus className="w-3.5 h-3.5" />
+                              <span>{isBn ? 'নতুন সেবা সংরক্ষণ ও যোগ করুন' : 'Save & Register Service'}</span>
+                            </button>
+                          </div>
                         </div>
                       </form>
                     </div>

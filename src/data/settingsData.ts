@@ -21,6 +21,25 @@ export const DEFAULT_SITE_SETTINGS: SiteSettings = {
   supportEmail: 'support@ezyseva.gov.in',
   officeAddressEn: 'EzySeva State HQ, Webel Bhavan, Salt Lake Sector V, Kolkata 700091',
   officeAddressBn: 'ইজি সেবা রাজ্য কার্যালয়, ওয়েবেল ভবন, সল্টলেক সেক্টর ৫, কলকাতা ৭০০০৯১',
+  logoStyle: 'emblem_shield',
+  customLogoUrl: 'https://upload.wikimedia.org/wikipedia/commons/thumb/d/d5/Emblem_of_West_Bengal.svg/300px-Emblem_of_West_Bengal.svg.png',
+  bannerTheme: 'aurora_gradient',
+  gatewayConfig: {
+    upi: true,
+    card: true,
+    netbanking: true,
+    wallet: true,
+    paylater: true,
+    kendraCash: true,
+    merchantUpiId: 'ezyseva.pay@gov.in',
+    gatewayMode: 'simulator',
+    activeProvider: 'razorpay',
+    merchantName: 'EzySeva Digital Services Ltd',
+    merchantKey: 'rzp_live_ezyseva_gov_2026',
+    autoVerify: true,
+    zeroConvenienceFee: false,
+    supportPhone: '1800-399-7382',
+  },
 };
 
 export const DEFAULT_ADMIN_CREDENTIALS: AdminCredentials = {

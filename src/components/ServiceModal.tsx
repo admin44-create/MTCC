@@ -27,9 +27,14 @@ import {
   Sparkles,
   RefreshCw,
   ExternalLink,
-  ShieldAlert
+  ShieldAlert,
+  Banknote,
+  Zap,
+  ChevronDown,
+  Building2,
+  Receipt
 } from 'lucide-react';
-import { ServiceItem, Language, ApplicationRecord, CustomerUser } from '../types';
+import { ServiceItem, Language, ApplicationRecord, CustomerUser, SiteSettings } from '../types';
 
 interface ServiceModalProps {
   service: ServiceItem | null;
@@ -38,6 +43,7 @@ interface ServiceModalProps {
   onSubmitApplication: (application: ApplicationRecord) => void;
   onGoToTrack: (trackingId: string) => void;
   customer?: CustomerUser | null;
+  siteSettings?: SiteSettings;
   onOpenCustomerLogin?: () => void;
   onOpenCustomerRegister?: () => void;
 }
@@ -49,6 +55,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   onSubmitApplication,
   onGoToTrack,
   customer,
+  siteSettings,
   onOpenCustomerLogin,
   onOpenCustomerRegister,
 }) => {
@@ -94,24 +101,50 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   );
   const [declarationAccepted, setDeclarationAccepted] = useState(false);
 
-  // Payment Gateway States
-  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet'>('upi');
-  const [upiApp, setUpiApp] = useState<'phonepe' | 'gpay' | 'paytm' | 'bhim' | 'qr' | 'custom'>('qr');
+  // Payment Gateway States - All Options
+  const [paymentMethod, setPaymentMethod] = useState<'upi' | 'card' | 'netbanking' | 'wallet' | 'paylater' | 'kendra_cash'>('upi');
+  const [upiApp, setUpiApp] = useState<'qr' | 'phonepe' | 'gpay' | 'paytm' | 'bhim' | 'amazonpay' | 'cred' | 'whatsapp' | 'navi' | 'supermoney' | 'custom'>('qr');
   const [customUpiId, setCustomUpiId] = useState(customer?.mobile ? `${customer.mobile}@upi` : '');
   const [selectedBank, setSelectedBank] = useState('sbi');
+  const [selectedWallet, setSelectedWallet] = useState<'digipay' | 'paytm' | 'phonepe' | 'amazonpay' | 'mobikwik' | 'freecharge' | 'airtel' | 'jiomoney'>('digipay');
+  const [selectedPayLater, setSelectedPayLater] = useState<'lazypay' | 'simpl' | 'amazon_paylater' | 'icici_paylater' | 'hdfc_flexipay'>('lazypay');
   const [cardNumber, setCardNumber] = useState('');
   const [cardExpiry, setCardExpiry] = useState('');
   const [cardCvv, setCardCvv] = useState('');
   const [cardHolder, setCardHolder] = useState(customer?.name || '');
+  const [saveCardChecked, setSaveCardChecked] = useState(true);
+  const [hasCopiedUpiLink, setHasCopiedUpiLink] = useState(false);
+  const [qrTimer, setQrTimer] = useState(300); // 5 min countdown
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
   const [paymentProcessingStatus, setPaymentProcessingStatus] = useState('');
+
+  // Countdown timer for QR
+  useEffect(() => {
+    if (step === 3 && paymentMethod === 'upi') {
+      const interval = setInterval(() => {
+        setQrTimer((prev) => (prev > 0 ? prev - 1 : 300));
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [step, paymentMethod]);
 
   // Generated Acknowledgment
   const [generatedRecord, setGeneratedRecord] = useState<ApplicationRecord | null>(null);
   const [hasCopiedTracking, setHasCopiedTracking] = useState(false);
   const [hasCopiedSpeedPost, setHasCopiedSpeedPost] = useState(false);
 
-  const totalFee = service.govtFee + service.convenienceFee;
+  const gwConfig = siteSettings?.gatewayConfig;
+  const isUpiEnabled = gwConfig ? gwConfig.upi !== false : true;
+  const isCardEnabled = gwConfig ? gwConfig.card !== false : true;
+  const isNetbankingEnabled = gwConfig ? gwConfig.netbanking !== false : true;
+  const isWalletEnabled = gwConfig ? gwConfig.wallet !== false : true;
+  const isPaylaterEnabled = gwConfig ? gwConfig.paylater !== false : true;
+  const isCashEnabled = gwConfig ? gwConfig.kendraCash !== false : true;
+  const activeMerchantUpi = gwConfig?.merchantUpiId || 'ezyseva.pay@gov.in';
+  const activeMerchantName = gwConfig?.merchantName || siteSettings?.portalName || 'EzySeva';
+
+  const convenienceFee = gwConfig?.zeroConvenienceFee ? 0 : service.convenienceFee;
+  const totalFee = service.govtFee + convenienceFee;
 
   const handleFieldChange = (fieldId: string, value: string) => {
     setServiceFieldsData((prev) => ({ ...prev, [fieldId]: value }));
@@ -195,14 +228,23 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         else if (upiApp === 'gpay') methodLabel = 'UPI (Google Pay)';
         else if (upiApp === 'paytm') methodLabel = 'UPI (Paytm)';
         else if (upiApp === 'bhim') methodLabel = 'UPI (BHIM)';
+        else if (upiApp === 'amazonpay') methodLabel = 'UPI (Amazon Pay)';
+        else if (upiApp === 'cred') methodLabel = 'UPI (CRED)';
+        else if (upiApp === 'whatsapp') methodLabel = 'UPI (WhatsApp Pay)';
+        else if (upiApp === 'navi') methodLabel = 'UPI (Navi)';
+        else if (upiApp === 'supermoney') methodLabel = 'UPI (Super.money)';
         else if (upiApp === 'custom') methodLabel = `UPI (${customUpiId || 'VPA'})`;
         else methodLabel = 'UPI (Scan & Pay QR)';
       } else if (paymentMethod === 'card') {
-        methodLabel = 'Debit / Credit Card (RuPay/Visa)';
+        methodLabel = `Debit / Credit Card (${cardNumber.startsWith('4') ? 'Visa' : cardNumber.startsWith('5') ? 'MasterCard' : 'RuPay'})`;
       } else if (paymentMethod === 'netbanking') {
         methodLabel = `Net Banking (${selectedBank.toUpperCase()})`;
       } else if (paymentMethod === 'wallet') {
-        methodLabel = 'EzySeva DigiPay Wallet';
+        methodLabel = `Digital Wallet (${selectedWallet === 'digipay' ? 'EzySeva DigiPay' : selectedWallet.toUpperCase()})`;
+      } else if (paymentMethod === 'paylater') {
+        methodLabel = `Pay Later BNPL (${selectedPayLater.toUpperCase()})`;
+      } else if (paymentMethod === 'kendra_cash') {
+        methodLabel = 'Counter Cash Deposit (Challan)';
       }
 
       const txnId = `TXN-${paymentMethod.toUpperCase()}-2026${randomSuffix}`;
@@ -778,14 +820,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                   </div>
                 </div>
 
-                {/* Gateway Tabs */}
-                <div className="grid grid-cols-4 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-[11px] font-bold">
+                {/* Gateway Tabs - ALL OPTIONS */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-1 bg-black/40 p-1 rounded-xl border border-white/10 text-[10px] sm:text-[11px] font-bold">
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('upi')}
-                    className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
                       paymentMethod === 'upi'
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
                         : 'text-white/60 hover:text-white'
                     }`}
                   >
@@ -796,9 +838,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('card')}
-                    className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
                       paymentMethod === 'card'
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
                         : 'text-white/60 hover:text-white'
                     }`}
                   >
@@ -809,9 +851,9 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('netbanking')}
-                    className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
                       paymentMethod === 'netbanking'
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
                         : 'text-white/60 hover:text-white'
                     }`}
                   >
@@ -822,14 +864,40 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                   <button
                     type="button"
                     onClick={() => setPaymentMethod('wallet')}
-                    className={`py-1.5 rounded-lg transition-all flex items-center justify-center gap-1 ${
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
                       paymentMethod === 'wallet'
-                        ? 'bg-blue-600 text-white shadow-md'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
                         : 'text-white/60 hover:text-white'
                     }`}
                   >
                     <Wallet className="w-3 h-3" />
                     <span>{isBn ? 'ওয়ালেট' : 'Wallet'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('paylater')}
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                      paymentMethod === 'paylater'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Zap className="w-3 h-3" />
+                    <span>{isBn ? 'পে লেটার' : 'PayLater'}</span>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() => setPaymentMethod('kendra_cash')}
+                    className={`py-1.5 px-1 rounded-lg transition-all flex flex-col sm:flex-row items-center justify-center gap-1 ${
+                      paymentMethod === 'kendra_cash'
+                        ? 'bg-blue-600 text-white shadow-md font-extrabold'
+                        : 'text-white/60 hover:text-white'
+                    }`}
+                  >
+                    <Banknote className="w-3 h-3" />
+                    <span>{isBn ? 'ক্যাশ জমা' : 'Cash'}</span>
                   </button>
                 </div>
 
@@ -864,25 +932,41 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                           </div>
                         </div>
 
-                        <div className="text-[11px] font-bold text-white">
-                          {isBn ? 'যেকোনো UPI অ্যাপ দিয়ে স্ক্যান করুন' : 'Scan with Any UPI App'}
+                        <div className="flex items-center justify-center gap-1.5 text-xs font-bold text-white">
+                          <span>{isBn ? 'যেকোনো UPI অ্যাপ দিয়ে স্ক্যান করুন' : 'Scan with Any UPI App'}</span>
+                          <span className="text-[10px] font-mono text-amber-400 bg-amber-500/15 border border-amber-500/30 px-1.5 py-0.5 rounded">
+                            {Math.floor(qrTimer / 60)}:{String(qrTimer % 60).padStart(2, '0')}
+                          </span>
                         </div>
-                        <div className="text-[10px] text-emerald-400 font-mono">
-                          UPI ID: ezyseva.pay@gov.in | ₹{totalFee}
+
+                        <div className="text-[10px] text-emerald-400 font-mono flex items-center justify-center gap-1">
+                          <span>UPI ID: {activeMerchantUpi}</span>
+                          <button
+                            type="button"
+                            onClick={() => {
+                              navigator.clipboard.writeText(`upi://pay?pa=${activeMerchantUpi}&pn=${encodeURIComponent(activeMerchantName)}&am=${totalFee}`);
+                              setHasCopiedUpiLink(true);
+                              setTimeout(() => setHasCopiedUpiLink(false), 2000);
+                            }}
+                            className="text-white/60 hover:text-white"
+                            title={isBn ? 'UPI লিঙ্ক কপি করুন' : 'Copy UPI Link'}
+                          >
+                            {hasCopiedUpiLink ? <Check className="w-3 h-3 text-emerald-400" /> : <Copy className="w-3 h-3" />}
+                          </button>
                         </div>
                       </div>
 
-                      {/* 1-Tap UPI Apps */}
+                      {/* 1-Tap UPI Apps - Extended List */}
                       <div className="space-y-2">
                         <div className="text-[11px] font-bold text-white/70">
-                          {isBn ? 'অথবা সরাসরি ১-ক্লিকে অ্যাপে পেমেন্ট করুন:' : 'Or choose your preferred UPI app:'}
+                          {isBn ? 'অথবা পছন্দের ১-ক্লিক UPI অ্যাপ বেছে নিন:' : 'Or choose your preferred 1-click UPI app:'}
                         </div>
 
-                        <div className="grid grid-cols-2 gap-2 text-xs">
+                        <div className="grid grid-cols-3 gap-1.5 text-[11px]">
                           <button
                             type="button"
                             onClick={() => setUpiApp('phonepe')}
-                            className={`p-2 rounded-xl border flex items-center gap-2 transition-all ${
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
                               upiApp === 'phonepe'
                                 ? 'bg-purple-600/30 border-purple-400 text-white font-bold'
                                 : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
@@ -895,20 +979,20 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setUpiApp('gpay')}
-                            className={`p-2 rounded-xl border flex items-center gap-2 transition-all ${
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
                               upiApp === 'gpay'
                                 ? 'bg-blue-600/30 border-blue-400 text-white font-bold'
                                 : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
                             }`}
                           >
                             <span className="w-5 h-5 rounded-full bg-blue-500 text-white flex items-center justify-center text-[10px] font-black">G</span>
-                            <span>Google Pay</span>
+                            <span>G-Pay</span>
                           </button>
 
                           <button
                             type="button"
                             onClick={() => setUpiApp('paytm')}
-                            className={`p-2 rounded-xl border flex items-center gap-2 transition-all ${
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
                               upiApp === 'paytm'
                                 ? 'bg-sky-600/30 border-sky-400 text-white font-bold'
                                 : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
@@ -921,21 +1005,86 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                           <button
                             type="button"
                             onClick={() => setUpiApp('bhim')}
-                            className={`p-2 rounded-xl border flex items-center gap-2 transition-all ${
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
                               upiApp === 'bhim'
                                 ? 'bg-amber-600/30 border-amber-400 text-white font-bold'
                                 : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
                             }`}
                           >
                             <span className="w-5 h-5 rounded-full bg-amber-500 text-white flex items-center justify-center text-[10px] font-black">B</span>
-                            <span>BHIM UPI</span>
+                            <span>BHIM</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUpiApp('amazonpay')}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                              upiApp === 'amazonpay'
+                                ? 'bg-orange-600/30 border-orange-400 text-white font-bold'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-orange-500 text-white flex items-center justify-center text-[10px] font-black">a</span>
+                            <span>Amazon</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUpiApp('cred')}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                              upiApp === 'cred'
+                                ? 'bg-zinc-700/60 border-zinc-400 text-white font-bold'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-zinc-900 border border-white/30 text-white flex items-center justify-center text-[9px] font-black">C</span>
+                            <span>CRED</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUpiApp('whatsapp')}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                              upiApp === 'whatsapp'
+                                ? 'bg-emerald-600/30 border-emerald-400 text-white font-bold'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-emerald-600 text-white flex items-center justify-center text-[10px] font-black">W</span>
+                            <span>WhatsApp</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUpiApp('navi')}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                              upiApp === 'navi'
+                                ? 'bg-teal-600/30 border-teal-400 text-white font-bold'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-teal-500 text-white flex items-center justify-center text-[10px] font-black">N</span>
+                            <span>Navi UPI</span>
+                          </button>
+
+                          <button
+                            type="button"
+                            onClick={() => setUpiApp('supermoney')}
+                            className={`p-1.5 rounded-xl border flex flex-col items-center justify-center gap-0.5 transition-all ${
+                              upiApp === 'supermoney'
+                                ? 'bg-indigo-600/30 border-indigo-400 text-white font-bold'
+                                : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                            }`}
+                          >
+                            <span className="w-5 h-5 rounded-full bg-indigo-500 text-white flex items-center justify-center text-[10px] font-black">S</span>
+                            <span>Super.money</span>
                           </button>
                         </div>
 
                         {/* Custom UPI ID Input */}
                         <div className="pt-1">
                           <label className="block text-[10px] font-semibold text-white/60 mb-1">
-                            {isBn ? 'অন্যান্য UPI আইডি লিখুন (ঐচ্ছিক):' : 'Enter Other UPI ID / VPA:'}
+                            {isBn ? 'অন্যান্য UPI আইডি লিখুন (VPA):' : 'Enter Other UPI ID / VPA:'}
                           </label>
                           <div className="flex gap-2">
                             <input
@@ -948,9 +1097,26 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                               placeholder="9830149210@upi"
                               className="w-full px-3 py-1.5 rounded-xl border border-white/15 bg-black/30 text-white text-xs placeholder-white/30 font-mono focus:border-blue-400 focus:outline-hidden"
                             />
-                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2.5 py-1.5 rounded-xl flex items-center shrink-0 font-mono">
+                            <span className="text-[10px] font-bold text-emerald-400 bg-emerald-500/15 border border-emerald-500/30 px-2 py-1.5 rounded-xl flex items-center shrink-0 font-mono">
                               Verified
                             </span>
+                          </div>
+                          {/* Quick UPI Handle Suffixes */}
+                          <div className="flex flex-wrap items-center gap-1 mt-1.5">
+                            {['@okaxis', '@okhdfcbank', '@ybl', '@ibl', '@paytm'].map((handle) => (
+                              <button
+                                key={handle}
+                                type="button"
+                                onClick={() => {
+                                  const prefix = customUpiId.split('@')[0] || (customer?.mobile || '9830149210');
+                                  setCustomUpiId(`${prefix}${handle}`);
+                                  setUpiApp('custom');
+                                }}
+                                className="text-[9px] font-mono px-1.5 py-0.5 rounded bg-white/5 hover:bg-white/15 text-white/60 hover:text-white border border-white/10"
+                              >
+                                {handle}
+                              </button>
+                            ))}
                           </div>
                         </div>
                       </div>
@@ -961,6 +1127,47 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 {/* TAB 2: CREDIT / DEBIT CARD */}
                 {paymentMethod === 'card' && (
                   <div className="space-y-3 pt-1">
+                    {/* Live Virtual Card Preview */}
+                    <div className="relative rounded-2xl bg-gradient-to-r from-blue-900 via-indigo-950 to-slate-900 border border-blue-400/30 p-4 shadow-xl overflow-hidden text-white">
+                      <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/10 rounded-full blur-2xl pointer-events-none" />
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <div className="w-8 h-6 rounded bg-amber-400/80 flex items-center justify-center text-black font-bold text-[9px] shadow-sm">
+                            CHIP
+                          </div>
+                          <span className="text-[10px] font-semibold text-white/60 tracking-wider">SECURE DIGITAL CARD</span>
+                        </div>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-[10px] font-bold uppercase tracking-wider bg-white/10 px-2 py-0.5 rounded-full border border-white/20">
+                            {cardNumber.startsWith('4')
+                              ? 'VISA'
+                              : cardNumber.startsWith('5')
+                              ? 'MASTERCARD'
+                              : cardNumber.startsWith('6')
+                              ? 'RUPAY'
+                              : 'RUPAY / VISA'}
+                          </span>
+                        </div>
+                      </div>
+
+                      <div className="font-mono text-base sm:text-lg tracking-widest font-extrabold text-blue-100 my-2">
+                        {cardNumber || '•••• •••• •••• 4242'}
+                      </div>
+
+                      <div className="flex items-center justify-between text-[10px] text-white/70 pt-2 border-t border-white/10">
+                        <div>
+                          <div className="text-[8px] uppercase tracking-wider text-white/40">CARDHOLDER</div>
+                          <div className="font-bold tracking-wide uppercase truncate max-w-[150px]">
+                            {cardHolder || (customer?.name || 'CITIZEN APPLICANT')}
+                          </div>
+                        </div>
+                        <div className="text-right">
+                          <div className="text-[8px] uppercase tracking-wider text-white/40">EXPIRES</div>
+                          <div className="font-mono font-bold">{cardExpiry || '08/29'}</div>
+                        </div>
+                      </div>
+                    </div>
+
                     <div>
                       <label className="block text-xs font-semibold text-white/70 mb-1">
                         {isBn ? 'কার্ড নম্বর (১৬ সংখ্যা) *' : 'Card Number (16 Digits) *'}
@@ -975,11 +1182,14 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                           className="w-full px-3.5 py-2 rounded-xl border border-white/15 bg-black/30 text-white text-xs placeholder-white/30 font-mono focus:border-blue-400 focus:outline-hidden"
                         />
                         <div className="absolute right-2.5 top-1/2 -translate-y-1/2 flex items-center gap-1">
-                          <span className="text-[9px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/30 px-1.5 py-0.5 rounded">
+                          <span className="text-[9px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded">
                             RuPay
                           </span>
                           <span className="text-[9px] font-bold bg-amber-500/20 text-amber-300 border border-amber-400/30 px-1.5 py-0.5 rounded">
                             Visa
+                          </span>
+                          <span className="text-[9px] font-bold bg-red-500/20 text-red-300 border border-red-400/30 px-1.5 py-0.5 rounded">
+                            MasterCard
                           </span>
                         </div>
                       </div>
@@ -1028,50 +1238,141 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                       </div>
                     </div>
+
+                    {/* RBI Tokenization Checkbox */}
+                    <div className="flex items-center gap-2 pt-1 text-[11px] text-white/60">
+                      <input
+                        type="checkbox"
+                        id="save-card-rbi"
+                        checked={saveCardChecked}
+                        onChange={(e) => setSaveCardChecked(e.target.checked)}
+                        className="rounded border-white/20 bg-white/10 text-blue-500 focus:ring-blue-500"
+                      />
+                      <label htmlFor="save-card-rbi" className="cursor-pointer">
+                        {isBn
+                          ? 'RBI টোকেনাইজেশন নির্দেশিকা অনুযায়ী এই কার্ড সুরক্ষিতভাবে সংরক্ষণ করুন'
+                          : 'Save this card securely per RBI tokenization guidelines'}
+                      </label>
+                    </div>
                   </div>
                 )}
 
-                {/* TAB 3: NET BANKING */}
+                {/* TAB 3: NET BANKING - 50+ BANKS */}
                 {paymentMethod === 'netbanking' && (
                   <div className="space-y-3 pt-1">
                     <div className="text-[11px] font-semibold text-white/70">
-                      {isBn ? 'জনপ্রিয় ব্যাংক নির্বাচন করুন:' : 'Select Popular Indian Bank:'}
+                      {isBn ? 'শীর্ষ ভারতীয় বাণিজ্যিক ও গ্রামীণ ব্যাংক:' : 'Top Indian Commercial & Rural Banks:'}
                     </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs">
+                    {/* 12 Instant 1-Click Banks */}
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
                       {[
                         { id: 'sbi', name: 'State Bank of India', code: 'SBI' },
                         { id: 'pnb', name: 'Punjab National Bank', code: 'PNB' },
                         { id: 'hdfc', name: 'HDFC Bank', code: 'HDFC' },
                         { id: 'icici', name: 'ICICI Bank', code: 'ICICI' },
                         { id: 'axis', name: 'Axis Bank', code: 'AXIS' },
+                        { id: 'bob', name: 'Bank of Baroda', code: 'BOB' },
+                        { id: 'canara', name: 'Canara Bank', code: 'CANARA' },
+                        { id: 'union', name: 'Union Bank of India', code: 'UBI' },
                         { id: 'bgvb', name: 'Bangiya Gramin Vikash', code: 'BGVB' },
+                        { id: 'pbgb', name: 'Paschim Banga Gramin', code: 'PBGB' },
+                        { id: 'wbscb', name: 'WB State Co-op Bank', code: 'WBSCB' },
+                        { id: 'kotak', name: 'Kotak Mahindra Bank', code: 'KOTAK' },
                       ].map((bank) => (
                         <button
                           key={bank.id}
                           type="button"
                           onClick={() => setSelectedBank(bank.id)}
-                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                          className={`p-2 rounded-xl border text-left transition-all ${
                             selectedBank === bank.id
                               ? 'bg-blue-600/30 border-blue-400 text-white font-bold shadow-sm'
                               : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
                           }`}
                         >
-                          <div className="font-mono text-[10px] text-blue-300">{bank.code}</div>
-                          <div className="truncate text-xs">{bank.name}</div>
+                          <div className="font-mono text-[9px] text-blue-300 font-bold">{bank.code}</div>
+                          <div className="truncate text-[11px] font-semibold">{bank.name}</div>
                         </button>
                       ))}
+                    </div>
+
+                    {/* All 50+ Banks Select Dropdown */}
+                    <div className="pt-2">
+                      <label className="block text-[11px] font-semibold text-white/70 mb-1">
+                        {isBn ? 'অন্যান্য সমস্ত ব্যাংক (৫০+ ব্যাংক তালিকা):' : 'Or select from all 50+ Indian Banks:'}
+                      </label>
+                      <select
+                        value={selectedBank}
+                        onChange={(e) => setSelectedBank(e.target.value)}
+                        className="w-full px-3 py-2 rounded-xl border border-white/20 bg-[#0d1226] text-white text-xs focus:border-blue-400 focus:outline-hidden"
+                      >
+                        <option value="sbi">State Bank of India (SBI)</option>
+                        <option value="pnb">Punjab National Bank (PNB)</option>
+                        <option value="hdfc">HDFC Bank</option>
+                        <option value="icici">ICICI Bank</option>
+                        <option value="axis">Axis Bank</option>
+                        <option value="bob">Bank of Baroda</option>
+                        <option value="canara">Canara Bank</option>
+                        <option value="union">Union Bank of India</option>
+                        <option value="bgvb">Bangiya Gramin Vikash Bank (West Bengal)</option>
+                        <option value="pbgb">Paschim Banga Gramin Bank (West Bengal)</option>
+                        <option value="wbscb">West Bengal State Co-operative Bank</option>
+                        <option value="kotak">Kotak Mahindra Bank</option>
+                        <option value="indusind">IndusInd Bank</option>
+                        <option value="boi">Bank of India (BOI)</option>
+                        <option value="cbi">Central Bank of India</option>
+                        <option value="idbi">IDBI Bank</option>
+                        <option value="indian">Indian Bank</option>
+                        <option value="iob">Indian Overseas Bank</option>
+                        <option value="uco">UCO Bank</option>
+                        <option value="federal">Federal Bank</option>
+                        <option value="yes">Yes Bank</option>
+                        <option value="bandhan">Bandhan Bank</option>
+                        <option value="idfc">IDFC FIRST Bank</option>
+                        <option value="rbl">RBL Bank</option>
+                        <option value="south_indian">South Indian Bank</option>
+                        <option value="au">AU Small Finance Bank</option>
+                        <option value="equitas">Equitas Small Finance Bank</option>
+                        <option value="ujjivan">Ujjivan Small Finance Bank</option>
+                        <option value="jk">Jammu & Kashmir Bank</option>
+                        <option value="karur">Karur Vysya Bank</option>
+                        <option value="city_union">City Union Bank</option>
+                        <option value="karnataka">Karnataka Bank</option>
+                        <option value="ippb">India Post Payments Bank (IPPB)</option>
+                        <option value="airtel_bank">Airtel Payments Bank</option>
+                        <option value="fino">Fino Payments Bank</option>
+                        <option value="tripura_gb">Tripura Gramin Bank</option>
+                        <option value="assam_gb">Assam Gramin Vikash Bank</option>
+                      </select>
                     </div>
                   </div>
                 )}
 
-                {/* TAB 4: WALLET / DIGIPAY */}
+                {/* TAB 4: WALLETS - 8 OPTIONS */}
                 {paymentMethod === 'wallet' && (
                   <div className="space-y-3 pt-1">
-                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center justify-between">
-                      <div>
-                        <div className="text-xs font-bold text-white">EzySeva Citizen DigiPay Wallet</div>
-                        <div className="text-[11px] text-white/50">
-                          {isBn ? 'গ্রাহক অ্যাকাউন্টে সঞ্চিত ব্যালেন্স' : 'Available balance in customer account'}
+                    {/* Citizen DigiPay Wallet */}
+                    <div 
+                      onClick={() => setSelectedWallet('digipay')}
+                      className={`cursor-pointer border rounded-2xl p-3.5 flex items-center justify-between transition-all ${
+                        selectedWallet === 'digipay'
+                          ? 'bg-blue-600/20 border-blue-400 shadow-md'
+                          : 'bg-white/5 border-white/10 hover:bg-white/10'
+                      }`}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-emerald-500 to-teal-400 flex items-center justify-center text-black font-black">
+                          <Wallet className="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                          <div className="text-xs font-bold text-white flex items-center gap-1.5">
+                            <span>EzySeva Citizen DigiPay Wallet</span>
+                            <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-400/30">
+                              Instant 0 Fee
+                            </span>
+                          </div>
+                          <div className="text-[11px] text-white/50">
+                            {isBn ? 'গ্রাহক অ্যাকাউন্টে সংরক্ষিত ওয়ালেট ব্যালেন্স' : 'Available balance in customer account'}
+                          </div>
                         </div>
                       </div>
                       <div className="text-right">
@@ -1082,25 +1383,135 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                       </div>
                     </div>
 
-                    {(customer.walletBalance || 0) >= totalFee ? (
-                      <div className="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl flex items-center gap-2">
-                        <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-                        <span>
-                          {isBn
-                            ? `আপনার ওয়ালেটে যথেষ্ট অর্থ রয়েছে। ১-ক্লিকে ₹${totalFee} পেমেন্ট সম্পূর্ণ করা যাবে।`
-                            : `Sufficient funds available. 1-click debit of ₹${totalFee} ready.`}
-                        </span>
-                      </div>
-                    ) : (
-                      <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl flex items-center gap-2">
-                        <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
-                        <span>
-                          {isBn
-                            ? 'ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই। অনুগ্রহ করে UPI অথবা কার্ড পেমেন্ট নির্বাচন করুন।'
-                            : 'Insufficient wallet balance. Please choose UPI or Card option.'}
-                        </span>
+                    {/* 7 Other Major Digital Wallets */}
+                    <div className="text-[11px] font-semibold text-white/70 pt-1">
+                      {isBn ? 'অথবা অন্যান্য ডিজিটাল ওয়ালেট নির্বাচন করুন:' : 'Or choose external digital wallet:'}
+                    </div>
+
+                    <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+                      {[
+                        { id: 'paytm', name: 'Paytm Wallet', badge: 'Paytm' },
+                        { id: 'phonepe', name: 'PhonePe Wallet', badge: 'PhonePe' },
+                        { id: 'amazonpay', name: 'Amazon Pay', badge: 'Amazon' },
+                        { id: 'mobikwik', name: 'MobiKwik', badge: 'MobiKwik' },
+                        { id: 'freecharge', name: 'Freecharge', badge: 'Freecharge' },
+                        { id: 'airtel', name: 'Airtel Money', badge: 'Airtel' },
+                        { id: 'jiomoney', name: 'JioMoney', badge: 'Jio' },
+                      ].map((w) => (
+                        <button
+                          key={w.id}
+                          type="button"
+                          onClick={() => setSelectedWallet(w.id as any)}
+                          className={`p-2.5 rounded-xl border text-left transition-all ${
+                            selectedWallet === w.id
+                              ? 'bg-blue-600/30 border-blue-400 text-white font-bold'
+                              : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="text-[10px] font-bold text-blue-300">{w.badge}</div>
+                          <div className="truncate text-xs">{w.name}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    {selectedWallet === 'digipay' && (
+                      <div>
+                        {(customer.walletBalance || 0) >= totalFee ? (
+                          <div className="text-xs text-emerald-300 bg-emerald-500/10 border border-emerald-500/20 p-2.5 rounded-xl flex items-center gap-2">
+                            <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+                            <span>
+                              {isBn
+                                ? `আপনার ওয়ালেটে যথেষ্ট অর্থ রয়েছে। ১-ক্লিকে ₹${totalFee} পেমেন্ট সম্পূর্ণ করা যাবে।`
+                                : `Sufficient funds available. 1-click debit of ₹${totalFee} ready.`}
+                            </span>
+                          </div>
+                        ) : (
+                          <div className="text-xs text-amber-300 bg-amber-500/10 border border-amber-500/20 p-2.5 rounded-xl flex items-center gap-2">
+                            <AlertTriangle className="w-4 h-4 text-amber-400 shrink-0" />
+                            <span>
+                              {isBn
+                                ? 'ওয়ালেটে পর্যাপ্ত ব্যালেন্স নেই। অনুগ্রহ করে UPI অথবা কার্ড পেমেন্ট নির্বাচন করুন।'
+                                : 'Insufficient wallet balance. Please choose UPI or Card option.'}
+                            </span>
+                          </div>
+                        )}
                       </div>
                     )}
+                  </div>
+                )}
+
+                {/* TAB 5: PAY LATER / BNPL */}
+                {paymentMethod === 'paylater' && (
+                  <div className="space-y-3 pt-1">
+                    <div className="text-[11px] font-semibold text-white/70">
+                      {isBn ? 'পরবর্তী মাসে ০% সুদে পেমেন্ট করুন (Pay Later):' : 'Pay next month at 0% interest with BNPL:'}
+                    </div>
+
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                      {[
+                        { id: 'lazypay', name: 'LazyPay (PayU)', desc: 'Pay next month • 0% Interest', tag: 'Fast' },
+                        { id: 'simpl', name: 'Simpl 1-Tap', desc: 'Instant 1-tap checkout • Bill bi-monthly', tag: 'Popular' },
+                        { id: 'amazon_paylater', name: 'Amazon Pay Later', desc: 'Instant credit line up to ₹60,000', tag: 'Instant' },
+                        { id: 'icici_paylater', name: 'ICICI Bank PayLater', desc: 'Direct savings bank credit line', tag: 'Bank' },
+                        { id: 'hdfc_flexipay', name: 'HDFC FlexiPay', desc: '15 to 90 days credit flexibility', tag: 'Bank' },
+                      ].map((bnpl) => (
+                        <button
+                          key={bnpl.id}
+                          type="button"
+                          onClick={() => setSelectedPayLater(bnpl.id as any)}
+                          className={`p-3 rounded-xl border text-left transition-all ${
+                            selectedPayLater === bnpl.id
+                              ? 'bg-blue-600/30 border-blue-400 text-white shadow-md'
+                              : 'bg-white/5 border-white/10 text-white/70 hover:bg-white/10'
+                          }`}
+                        >
+                          <div className="flex items-center justify-between">
+                            <span className="font-bold text-white text-xs">{bnpl.name}</span>
+                            <span className="text-[9px] bg-white/10 text-blue-300 px-1.5 py-0.5 rounded font-mono">
+                              {bnpl.tag}
+                            </span>
+                          </div>
+                          <div className="text-[10px] text-white/50 mt-0.5">{bnpl.desc}</div>
+                        </button>
+                      ))}
+                    </div>
+
+                    <div className="text-[11px] text-white/60 bg-white/5 p-2.5 rounded-xl border border-white/10 flex items-center gap-2">
+                      <ShieldCheck className="w-4 h-4 text-emerald-400 shrink-0" />
+                      <span>
+                        {isBn
+                          ? 'নিবন্ধিত মোবাইল নম্বরে ওটিপি যাচাইকরণের মাধ্যমে তাৎক্ষণিক ক্রেডিট কার্যকর হবে।'
+                          : 'Instant credit approval via OTP authentication on registered mobile number.'}
+                      </span>
+                    </div>
+                  </div>
+                )}
+
+                {/* TAB 6: KENDRA CASH / COUNTER CHALLAN */}
+                {paymentMethod === 'kendra_cash' && (
+                  <div className="space-y-3 pt-1">
+                    <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4 text-white space-y-2">
+                      <div className="flex items-center gap-2 text-amber-300 font-bold text-xs sm:text-sm">
+                        <Banknote className="w-4 h-4" />
+                        <span>{isBn ? 'নিকটবর্তী সিএসসি / ইজি সেবা কেন্দ্রে নগদ জমা' : 'Pay Cash at Nearest EzySeva / CSC Kiosk'}</span>
+                      </div>
+                      <p className="text-[11px] text-white/70 leading-relaxed">
+                        {isBn
+                          ? 'অনলাইনে পেমেন্ট করতে না পারলে আপনি এই আবেদন সাবমিট করে একটি "ক্যাশ ডিপোজিট চালান" ডাউনলোড করতে পারেন এবং ৭২ ঘণ্টার মধ্যে নিকটবর্তী কেন্দ্রে নগদ ফি জমা দিতে পারেন।'
+                          : 'If you prefer paying in cash, submit this application to generate a downloadable Cash Deposit Challan and pay at any authorized CSC VLE kiosk within 72 hours.'}
+                      </p>
+                    </div>
+
+                    <div className="bg-black/30 border border-white/15 rounded-xl p-3 flex items-center justify-between">
+                      <div>
+                        <div className="text-[10px] text-white/50">{isBn ? 'চালান ভ্যালিডিটি:' : 'Challan Validity:'}</div>
+                        <div className="text-xs font-bold text-white">72 Hours from generation</div>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-[10px] text-white/50">{isBn ? 'কাউন্টারে প্রদেয়:' : 'Payable at Counter:'}</div>
+                        <div className="font-mono font-bold text-emerald-400 text-sm">₹{totalFee} (Exact Cash)</div>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>

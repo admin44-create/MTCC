@@ -109,6 +109,26 @@ export interface AdminCredentials {
   lastUpdated?: string;
 }
 
+export interface PaymentGatewaySettings {
+  upi: boolean;
+  card: boolean;
+  netbanking: boolean;
+  wallet: boolean;
+  paylater: boolean;
+  kendraCash: boolean;
+  merchantUpiId: string;
+  gatewayMode: 'production' | 'simulator';
+  activeProvider?: 'razorpay' | 'cashfree' | 'payu' | 'ccavenue' | 'billdesk' | 'npci_bhim';
+  merchantName?: string;
+  merchantKey?: string;
+  autoVerify?: boolean;
+  zeroConvenienceFee?: boolean;
+  supportPhone?: string;
+}
+
+export type LogoStyleType = 'emblem_shield' | 'digital_india' | 'ashoka_chakra' | 'csc_kendra' | 'cyber_smart';
+export type BannerThemeType = 'aurora_gradient' | 'digital_india_tricolor' | 'deep_cyber' | 'royal_midnight';
+
 export interface SiteSettings {
   portalName: string;
   portalSubname: string;
@@ -130,4 +150,8 @@ export interface SiteSettings {
   supportEmail: string;
   officeAddressEn: string;
   officeAddressBn: string;
+  logoStyle?: LogoStyleType;
+  customLogoUrl?: string;
+  bannerTheme?: BannerThemeType;
+  gatewayConfig?: PaymentGatewaySettings;
 }

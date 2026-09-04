@@ -1,0 +1,6 @@
+{
+  "name": "EzySeva - Citizen Digital Services Portal",
+  "description": "Comprehensive Digital Seva and Citizen Services portal for government applications, certificates, utility bills, status tracking, and 24/7 AI Seva Sahayak.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

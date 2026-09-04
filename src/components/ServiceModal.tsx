@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   CheckCircle2, 
@@ -32,9 +32,11 @@ import {
   Zap,
   ChevronDown,
   Building2,
-  Receipt
+  Receipt,
+  Globe2
 } from 'lucide-react';
 import { ServiceItem, Language, ApplicationRecord, CustomerUser, SiteSettings } from '../types';
+import { ALL_INDIAN_STATES, getDistrictsForState } from '../data/locationsData';
 
 interface ServiceModalProps {
   service: ServiceItem | null;
@@ -46,6 +48,7 @@ interface ServiceModalProps {
   siteSettings?: SiteSettings;
   onOpenCustomerLogin?: () => void;
   onOpenCustomerRegister?: () => void;
+  onViewInvoice?: (record: ApplicationRecord) => void;
 }
 
 export const ServiceModal: React.FC<ServiceModalProps> = ({
@@ -58,6 +61,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   siteSettings,
   onOpenCustomerLogin,
   onOpenCustomerRegister,
+  onViewInvoice,
 }) => {
   if (!service) return null;
 
@@ -71,9 +75,15 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   const [otpValue, setOtpValue] = useState('');
   const [isOtpVerified, setIsOtpVerified] = useState(!!customer);
   const [aadhaar, setAadhaar] = useState(customer?.aadhaar || '');
+  const [selectedState, setSelectedState] = useState(customer?.state || 'West Bengal');
   const [district, setDistrict] = useState(customer?.district || 'North 24 Parganas');
   const [address, setAddress] = useState(customer?.address || '');
   const [pincode, setPincode] = useState(customer?.pincode || '');
+
+  // Available districts for chosen state
+  const availableDistricts = useMemo(() => {
+    return getDistrictsForState(selectedState);
+  }, [selectedState]);
 
   // Keep form updated if customer changes
   useEffect(() => {
@@ -81,6 +91,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       setFullName(customer.name || '');
       setMobile(customer.mobile || '');
       setAadhaar(customer.aadhaar || '');
+      setSelectedState(customer.state || 'West Bengal');
       setDistrict(customer.district || 'North 24 Parganas');
       setAddress(customer.address || '');
       setPincode(customer.pincode || '');
@@ -248,6 +259,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       }
 
       const txnId = `TXN-${paymentMethod.toUpperCase()}-2026${randomSuffix}`;
+      const utrNumber = `UTR-${Math.floor(100000000000 + Math.random() * 900000000000)}`;
+      const invoiceNumber = `INV-2026-${randomSuffix}`;
+      const paymentTimestamp = new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ', ' + new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' }) + ' IST';
+      const govtFee = service.govtFee;
+      const convenienceFee = Math.max(0, Math.floor(service.convenienceFee / 1.18));
+      const gstAmount = service.convenienceFee - convenienceFee;
 
       const newRecord: ApplicationRecord = {
         trackingId,
@@ -264,24 +281,35 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         kendraAssignedEn: `EzySeva Regional Facilitation Center - ${district}`,
         kendraAssignedBn: `ইজি সেবা আঞ্চলিক সহায়তা কেন্দ্র - ${district}`,
         remarksEn: isPvc
-          ? `PVC Card payment verified (Txn: ${txnId}). Hologram printing queued. Dispatched via India Post Speed Post: ${speedPostNumber}.`
-          : `Application payment of ₹${totalFee} settled successfully (Txn: ${txnId}). Initial digital document verification initiated.`,
+          ? `PVC Card payment verified (Txn: ${txnId}, UTR: ${utrNumber}). Dispatched via India Post Speed Post: ${speedPostNumber}.`
+          : `Application payment of ₹${totalFee} settled successfully (Txn: ${txnId}, UTR: ${utrNumber}). Initial document verification in progress.`,
         remarksBn: isPvc
-          ? `পিভিসি কার্ড পেমেন্ট সম্পন্ন (লেনদেন আইডি: ${txnId})। সিকিউরিটি হলোগ্রাম প্রিন্টিং ও ভারতীয় ডাক স্পিড পোস্টে প্রেরণের প্রস্তুতি চলছে (কনসাইনমেন্ট: ${speedPostNumber})।`
-          : `আবেদনের ফি ₹${totalFee} সফলভাবে জমা হয়েছে (লেনদেন আইডি: ${txnId})। প্রাথমিক ডিজিটাল নথি যাচাইকরণ শুরু হয়েছে।`,
+          ? `পিভিসি কার্ড পেমেন্ট সম্পন্ন (ইউটিআর: ${utrNumber})। ভারতীয় ডাক স্পিড পোস্টে প্রেরণের প্রস্তুতি চলছে (কনসাইনমেন্ট: ${speedPostNumber})।`
+          : `আবেদনের ফি ₹${totalFee} সফলভাবে জমা হয়েছে (ইউটিআর: ${utrNumber})। প্রাথমিক ডিজিটাল নথি যাচাইকরণ শুরু হয়েছে।`,
         formData: {
           ...serviceFieldsData,
+          state: selectedState,
           district,
           address,
           pincode,
           deliveryMode,
         },
         feePaid: totalFee,
+        govtFee,
+        convenienceFee,
+        gstAmount,
+        applicantState: selectedState,
+        applicantDistrict: district,
+        applicantAddress: address,
+        applicantPincode: pincode,
         customerId: customer?.id || 'CUST-REGISTERED',
         deliveryMode,
         speedPostNumber,
         paymentMethod: methodLabel,
         paymentTransactionId: txnId,
+        utrNumber,
+        invoiceNumber,
+        paymentTimestamp,
         paymentStatus: 'paid',
       };
 
@@ -538,34 +566,45 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 </div>
               )}
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                <div>
+                  <label className="block text-xs font-bold text-white/80 mb-1 flex items-center gap-1">
+                    <Globe2 className="w-3 h-3 text-blue-400" />
+                    <span>{isBn ? 'রাজ্য / কেন্দ্রশাসিত অঞ্চল *' : 'State / UT *'}</span>
+                  </label>
+                  <select
+                    value={selectedState}
+                    onChange={(e) => {
+                      const st = e.target.value;
+                      setSelectedState(st);
+                      const dList = getDistrictsForState(st);
+                      if (dList.length > 0) {
+                        setDistrict(dList[0].nameEn);
+                      }
+                    }}
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs sm:text-sm focus:border-blue-400 focus:outline-hidden"
+                  >
+                    {ALL_INDIAN_STATES.map((st) => (
+                      <option key={st.code} value={st.nameEn} className="bg-[#0e0e24] text-white">
+                        {isBn ? `${st.nameBn} (${st.nameEn})` : `${st.nameEn} (${st.code})`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
                 <div>
                   <label className="block text-xs font-bold text-white/80 mb-1">
-                    {isBn ? 'জেলা *' : 'District *'}
+                    {isBn ? 'জেলা (District) *' : 'District *'}
                   </label>
                   <select
                     value={district}
                     onChange={(e) => setDistrict(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-xl border border-white/15 bg-[#14142b] text-white text-sm focus:border-blue-400 focus:outline-hidden"
+                    className="w-full px-3 py-2.5 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs sm:text-sm focus:border-blue-400 focus:outline-hidden"
                   >
-                    {[
-                      'Kolkata',
-                      'North 24 Parganas',
-                      'South 24 Parganas',
-                      'Howrah',
-                      'Hooghly',
-                      'Purba Bardhaman',
-                      'Paschim Bardhaman',
-                      'Nadia',
-                      'Murshidabad',
-                      'Siliguri / Darjeeling',
-                      'Purba Medinipur',
-                      'Paschim Medinipur',
-                      'Bankura',
-                      'Birbhum',
-                      'Malda',
-                    ].map((d) => (
-                      <option key={d} value={d} className="bg-[#0e0e24] text-white">{d}</option>
+                    {availableDistricts.map((d) => (
+                      <option key={d.nameEn} value={d.nameEn} className="bg-[#0e0e24] text-white">
+                        {isBn ? `${d.nameBn} (${d.nameEn})` : d.nameEn}
+                      </option>
                     ))}
                   </select>
                 </div>
@@ -1657,6 +1696,28 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                       {generatedRecord.paymentMethod} • <span className="font-mono text-emerald-400">{generatedRecord.paymentTransactionId}</span>
                     </div>
                   </div>
+                  {generatedRecord.utrNumber && (
+                    <div>
+                      <span className="text-[10px] text-white/50 font-semibold">{isBn ? 'ব্যাংক ইউটিআর নম্বর' : 'Bank UTR Ref No'}:</span>
+                      <div className="font-mono font-bold text-amber-400 text-xs">
+                        {generatedRecord.utrNumber}
+                      </div>
+                    </div>
+                  )}
+                  {generatedRecord.invoiceNumber && (
+                    <div>
+                      <span className="text-[10px] text-white/50 font-semibold">{isBn ? 'ইনভয়েস নম্বর' : 'Tax Invoice No'}:</span>
+                      <div className="font-mono font-bold text-purple-300 text-xs">
+                        {generatedRecord.invoiceNumber}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <span className="text-[10px] text-white/50 font-semibold">{isBn ? 'আবেদনকারীর ঠিকানা' : 'Applicant State & District'}:</span>
+                    <div className="text-white/80 text-[11px]">
+                      {generatedRecord.applicantDistrict || generatedRecord.formData?.district}, {generatedRecord.applicantState || generatedRecord.formData?.state || 'West Bengal'}
+                    </div>
+                  </div>
                 </div>
 
                 {/* Barcode representation */}
@@ -1677,18 +1738,22 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 <button
                   type="button"
                   onClick={() => {
-                    alert(isBn ? 'রসিদ সফলভাবে ডাউনলোড করা হলো (PDF)!' : 'Receipt downloaded successfully (PDF)!');
+                    if (onViewInvoice) {
+                      onViewInvoice(generatedRecord);
+                    } else {
+                      window.print();
+                    }
                   }}
-                  className="flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-white/20 text-white hover:bg-white/10 transition-colors"
+                  className="flex items-center gap-2 px-4 py-2.5 rounded-xl text-xs font-bold bg-purple-600/30 hover:bg-purple-600/40 text-purple-200 border border-purple-400/40 shadow-lg shadow-purple-900/20 transition-all"
                 >
-                  <Download className="w-3.5 h-3.5" />
-                  <span>{isBn ? 'রসিদ ডাউনলোড (PDF)' : 'Download Receipt'}</span>
+                  <Receipt className="w-4 h-4 text-purple-300" />
+                  <span>{isBn ? 'ট্যাক্স ইনভয়েস দেখুন ও ডাউনলোড (GST)' : 'View & Download Tax Invoice'}</span>
                 </button>
 
                 <button
                   type="button"
                   onClick={() => onGoToTrack(generatedRecord.trackingId)}
-                  className="flex items-center gap-1.5 px-5 py-2 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 transition-all"
+                  className="flex items-center gap-1.5 px-5 py-2.5 rounded-xl text-xs font-bold bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-500 hover:to-indigo-500 text-white shadow-lg shadow-blue-600/30 border border-blue-400/30 transition-all"
                 >
                   <span>{isBn ? 'স্ট্যাটাস ও স্পিড পোস্ট ট্র্যাক করুন' : 'Track Status & Speed Post'}</span>
                   <ArrowRight className="w-4 h-4" />

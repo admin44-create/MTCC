@@ -38,6 +38,49 @@ import { Footer } from './components/Footer';
 import { AdminPanelModal } from './components/AdminPanelModal';
 import { CustomerPortalModal } from './components/CustomerPortalModal';
 
+// Utilities to prevent duplicate keys across state and localStorage
+function deduplicateServices(items: ServiceItem[]): ServiceItem[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: ServiceItem[] = [];
+  for (const item of items) {
+    if (!item || !item.id) continue;
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+function deduplicateKendras(items: KendraItem[]): KendraItem[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: KendraItem[] = [];
+  for (const item of items) {
+    if (!item || !item.id) continue;
+    if (!seen.has(item.id)) {
+      seen.add(item.id);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
+function deduplicateApplications(items: ApplicationRecord[]): ApplicationRecord[] {
+  if (!Array.isArray(items)) return [];
+  const seen = new Set<string>();
+  const result: ApplicationRecord[] = [];
+  for (const item of items) {
+    if (!item || !item.trackingId) continue;
+    if (!seen.has(item.trackingId)) {
+      seen.add(item.trackingId);
+      result.push(item);
+    }
+  }
+  return result;
+}
+
 export default function App() {
   // Primary State
   const [language, setLanguage] = useState<Language>('bn');
@@ -56,21 +99,41 @@ export default function App() {
     }
   });
 
-  // Services State (Admin Modifiable)
+  // Services State (Admin Modifiable - Deduplicated)
   const [services, setServices] = useState<ServiceItem[]>(() => {
     try {
       const saved = localStorage.getItem('ezyseva_services');
-      return saved ? JSON.parse(saved) : SERVICES_DATA;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const deduped = deduplicateServices(parsed);
+        if (deduped.length > 0) {
+          if (parsed.length !== deduped.length) {
+            localStorage.setItem('ezyseva_services', JSON.stringify(deduped));
+          }
+          return deduped;
+        }
+      }
+      return SERVICES_DATA;
     } catch {
       return SERVICES_DATA;
     }
   });
 
-  // Kendra Locations State (Admin Modifiable)
+  // Kendra Locations State (Admin Modifiable - Deduplicated)
   const [kendras, setKendras] = useState<KendraItem[]>(() => {
     try {
       const saved = localStorage.getItem('ezyseva_kendras');
-      return saved ? JSON.parse(saved) : KENDRA_LOCATIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const deduped = deduplicateKendras(parsed);
+        if (deduped.length > 0) {
+          if (parsed.length !== deduped.length) {
+            localStorage.setItem('ezyseva_kendras', JSON.stringify(deduped));
+          }
+          return deduped;
+        }
+      }
+      return KENDRA_LOCATIONS;
     } catch {
       return KENDRA_LOCATIONS;
     }
@@ -96,11 +159,21 @@ export default function App() {
   const [customerAuthPromptReason, setCustomerAuthPromptReason] = useState<string | null>(null);
   const [pendingServiceToApply, setPendingServiceToApply] = useState<ServiceItem | null>(null);
 
-  // Applications Tracking State
+  // Applications Tracking State (Deduplicated)
   const [applications, setApplications] = useState<ApplicationRecord[]>(() => {
     try {
       const saved = localStorage.getItem('ezyseva_applications');
-      return saved ? JSON.parse(saved) : INITIAL_APPLICATIONS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        const deduped = deduplicateApplications(parsed);
+        if (deduped.length > 0) {
+          if (parsed.length !== deduped.length) {
+            localStorage.setItem('ezyseva_applications', JSON.stringify(deduped));
+          }
+          return deduped;
+        }
+      }
+      return INITIAL_APPLICATIONS;
     } catch {
       return INITIAL_APPLICATIONS;
     }
@@ -120,18 +193,20 @@ export default function App() {
   };
 
   const handleUpdateServices = (newServices: ServiceItem[]) => {
-    setServices(newServices);
+    const deduped = deduplicateServices(newServices);
+    setServices(deduped);
     try {
-      localStorage.setItem('ezyseva_services', JSON.stringify(newServices));
+      localStorage.setItem('ezyseva_services', JSON.stringify(deduped));
     } catch (e) {
       console.warn('LocalStorage save failed', e);
     }
   };
 
   const handleUpdateKendras = (newKendras: KendraItem[]) => {
-    setKendras(newKendras);
+    const deduped = deduplicateKendras(newKendras);
+    setKendras(deduped);
     try {
-      localStorage.setItem('ezyseva_kendras', JSON.stringify(newKendras));
+      localStorage.setItem('ezyseva_kendras', JSON.stringify(deduped));
     } catch (e) {
       console.warn('LocalStorage save failed', e);
     }
@@ -149,18 +224,20 @@ export default function App() {
   const handleUpdateService = (updated: ServiceItem) => {
     setServices((prev) => {
       const next = prev.map((s) => (s.id === updated.id ? updated : s));
+      const deduped = deduplicateServices(next);
       try {
-        localStorage.setItem('ezyseva_services', JSON.stringify(next));
+        localStorage.setItem('ezyseva_services', JSON.stringify(deduped));
       } catch (e) {
         console.warn('LocalStorage save failed', e);
       }
-      return next;
+      return deduped;
     });
   };
 
   const handleAddService = (newService: ServiceItem) => {
     setServices((prev) => {
-      const next = [newService, ...prev];
+      const filtered = prev.filter((s) => s.id !== newService.id);
+      const next = [newService, ...filtered];
       try {
         localStorage.setItem('ezyseva_services', JSON.stringify(next));
       } catch (e) {
@@ -183,9 +260,10 @@ export default function App() {
   };
 
   const handleUpdateApplications = (newApps: ApplicationRecord[]) => {
-    setApplications(newApps);
+    const deduped = deduplicateApplications(newApps);
+    setApplications(deduped);
     try {
-      localStorage.setItem('ezyseva_applications', JSON.stringify(newApps));
+      localStorage.setItem('ezyseva_applications', JSON.stringify(deduped));
     } catch (e) {
       console.warn('LocalStorage save failed', e);
     }
@@ -253,12 +331,23 @@ export default function App() {
     }
   };
 
-  // Filtered Services List based on dynamic services state
+  // Filtered Services List based on dynamic services state (strictly deduplicated)
   const filteredServices = useMemo(() => {
-    return services.filter((item) => {
+    const seen = new Set<string>();
+    const result: ServiceItem[] = [];
+
+    for (const item of services) {
+      if (!item || !item.id || seen.has(item.id)) continue;
+      seen.add(item.id);
+
       const matchesCategory = selectedCategory === 'all' || item.category === selectedCategory;
       const query = searchQuery.trim().toLowerCase();
-      if (!query) return matchesCategory;
+      if (!matchesCategory) continue;
+
+      if (!query) {
+        result.push(item);
+        continue;
+      }
 
       const matchesText =
         item.titleEn.toLowerCase().includes(query) ||
@@ -270,8 +359,11 @@ export default function App() {
         item.officialGovtBodyEn.toLowerCase().includes(query) ||
         item.officialGovtBodyBn.toLowerCase().includes(query);
 
-      return matchesCategory && matchesText;
-    });
+      if (matchesText) {
+        result.push(item);
+      }
+    }
+    return result;
   }, [services, searchQuery, selectedCategory]);
 
   const handleApply = (service: ServiceItem) => {
@@ -440,9 +532,9 @@ export default function App() {
 
           {filteredServices.length > 0 ? (
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
-              {filteredServices.map((service) => (
+              {filteredServices.map((service, idx) => (
                 <ServiceCard
-                  key={service.id}
+                  key={service.id ? `${service.id}-${idx}` : `srv-${idx}`}
                   service={service}
                   language={language}
                   onApply={handleApply}

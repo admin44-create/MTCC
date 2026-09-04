@@ -127,9 +127,9 @@ export const TrackApplication: React.FC<TrackApplicationProps> = ({
         {/* Quick Sample Tracking ID Buttons */}
         <div className="flex flex-wrap items-center justify-center gap-2 mt-3 text-xs">
           <span className="font-semibold text-white/50">{isBn ? 'উদাহরণ ট্র্যাক আইডি:' : 'Try Samples:'}</span>
-          {applications.slice(0, 5).map((app) => (
+          {applications.slice(0, 5).map((app, idx) => (
             <button
-              key={app.trackingId}
+              key={app.trackingId ? `${app.trackingId}-${idx}` : `track-${idx}`}
               type="button"
               onClick={() => handleSelectSample(app.trackingId)}
               className={`font-mono px-2.5 py-1 rounded-lg border text-[11px] transition-all backdrop-blur-md cursor-pointer ${

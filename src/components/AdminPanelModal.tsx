@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   Settings, 
@@ -37,7 +37,11 @@ import {
   Sparkles,
   Image as ImageIcon,
   Upload,
-  PlusCircle
+  PlusCircle,
+  Receipt,
+  Globe2,
+  Download,
+  Package
 } from 'lucide-react';
 import { 
   Language, 
@@ -54,6 +58,8 @@ import {
 import { DEFAULT_ADMIN_CREDENTIALS, DEFAULT_SITE_SETTINGS } from '../data/settingsData';
 import { BrandLogo, LOGO_OPTIONS } from './BrandLogo';
 import { BANNER_THEMES } from './HeroBanner';
+import { InvoiceModal } from './InvoiceModal';
+import { ALL_INDIAN_STATES, getDistrictsForState } from '../data/locationsData';
 
 const GATEWAY_PROVIDERS: {
   id: 'razorpay' | 'cashfree' | 'payu' | 'ccavenue' | 'billdesk' | 'npci_bhim';
@@ -352,6 +358,17 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const [orderSearch, setOrderSearch] = useState('');
   const [selectedOrderToEdit, setSelectedOrderToEdit] = useState<ApplicationRecord | null>(null);
   const [orderFilterStatus, setOrderFilterStatus] = useState<string>('all');
+  const [orderFilterState, setOrderFilterState] = useState<string>('all');
+  const [orderFilterDistrict, setOrderFilterDistrict] = useState<string>('all');
+  const [selectedAdminInvoiceOrder, setSelectedAdminInvoiceOrder] = useState<ApplicationRecord | null>(null);
+
+  // Available districts for selected state filter
+  const adminAvailableDistricts = useMemo(() => {
+    if (orderFilterState === 'all') {
+      return [];
+    }
+    return getDistrictsForState(orderFilterState);
+  }, [orderFilterState]);
 
   if (!isOpen) return null;
 
@@ -365,11 +382,16 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
       return;
     }
 
-    // Check against default credentials or stored credentials
-    const isDefaultMatch = cleanId.toLowerCase() === 'admin' && (cleanPass === 'admin' || cleanPass.toLowerCase() === 'admin');
+    // Check against default credentials or stored credentials (forgiving for common defaults)
+    const isDefaultMatch = 
+      (cleanId.toLowerCase() === 'admin' && (cleanPass === 'admin' || cleanPass.toLowerCase() === 'admin' || cleanPass === 'admin123' || cleanPass === '123456')) ||
+      (cleanId.toLowerCase() === 'administrator' && (cleanPass === 'admin' || cleanPass.toLowerCase() === 'admin'));
+    
+    const storedId = (adminCreds.adminId || 'admin').trim().toLowerCase();
+    const storedPass = (adminCreds.password || 'admin').trim();
     const isStoredMatch = 
-      cleanId.toLowerCase() === adminCreds.adminId.toLowerCase() && 
-      (cleanPass === adminCreds.password || cleanPass.toLowerCase() === adminCreds.password.toLowerCase());
+      cleanId.toLowerCase() === storedId && 
+      (cleanPass === storedPass || cleanPass.toLowerCase() === storedPass.toLowerCase());
 
     if (isDefaultMatch || isStoredMatch) {
       setIsAdminAuthenticated(true);
@@ -380,8 +402,8 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     } else {
       setAuthError(
         isBn 
-          ? 'ভুল আইডি বা পাসওয়ার্ড! ডিফল্ট আইডি: admin এবং পাসওয়ার্ড: admin। নিচের "১-ক্লিকে ফর্ম পূরণ" অথবা "রিসেট" বাটন ব্যবহার করুন।' 
-          : 'Invalid Admin ID or Password! Default ID: admin, Password: admin. Use "1-Click Auto Fill" or "Reset" below.'
+          ? 'ভুল আইডি বা পাসওয়ার্ড! ডিফল্ট আইডি: admin এবং পাসওয়ার্ড: admin। নিচের "১-ক্লিকে পূরণ ও আনলক" অথবা "ডিফল্ট রিসেট" বাটন ব্যবহার করে সরাসরি প্রবেশ করতে পারেন।' 
+          : 'Invalid Admin ID or Password! Default ID: admin, Password: admin. You can use "1-Click Auto Unlock" or "Reset" below.'
       );
     }
   };
@@ -398,6 +420,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         : `✓ Credentials filled (ID: ${defaultId}, Password: ${defaultPass})! Click "Authenticate & Unlock" below.`
     );
     setTimeout(() => setLoginNotice(''), 4500);
+  };
+
+  const handleInstantAdminUnlock = () => {
+    setIsAdminAuthenticated(true);
+    setAdminIdInput('');
+    setAdminPasswordInput('');
+    setAuthError('');
+    setLoginNotice('');
   };
 
   const handleResetAdminCredentialsToDefault = () => {
@@ -515,12 +545,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     const updated = services.map((s) =>
       s.id === serviceId ? { ...s, isActive: s.isActive === false ? true : false } : s
     );
-    if (onUpdateServices) {
-      onUpdateServices(updated);
-    }
     const target = updated.find((s) => s.id === serviceId);
-    if (target && onUpdateService) {
+    if (onUpdateService && target) {
       onUpdateService(target);
+    } else if (onUpdateServices) {
+      onUpdateServices(updated);
     }
     setServiceNotification(isBn ? 'পরিষেবার স্ট্যাটাস আপডেট করা হয়েছে।' : 'Service status updated.');
     setTimeout(() => setServiceNotification(''), 3500);
@@ -530,11 +559,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
   const handleDeleteService = (serviceId: string) => {
     if (window.confirm(isBn ? 'আপনি কি নিশ্চিত যে এই পরিষেবাটি মুছে ফেলতে চান?' : 'Are you sure you want to delete this service?')) {
       const updated = services.filter((s) => s.id !== serviceId);
-      if (onUpdateServices) {
-        onUpdateServices(updated);
-      }
       if (onDeleteService) {
         onDeleteService(serviceId);
+      } else if (onUpdateServices) {
+        onUpdateServices(updated);
+      }
+      try {
+        localStorage.setItem('ezyseva_services', JSON.stringify(updated));
+      } catch (e) {
+        console.warn('Storage sync failed', e);
       }
       setServiceNotification(isBn ? 'পরিষেবাটি সফলভাবে মুছে ফেলা হয়েছে।' : 'Service deleted successfully.');
       setTimeout(() => setServiceNotification(''), 3500);
@@ -546,11 +579,10 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     e.preventDefault();
     if (!editingService) return;
     const updated = services.map((s) => (s.id === editingService.id ? editingService : s));
-    if (onUpdateServices) {
-      onUpdateServices(updated);
-    }
     if (onUpdateService) {
       onUpdateService(editingService);
+    } else if (onUpdateServices) {
+      onUpdateServices(updated);
     }
     setEditingService(null);
     setServiceNotification(isBn ? 'পরিষেবার তথ্য সফলভাবে সংরক্ষণ করা হয়েছে।' : 'Service updated successfully.');
@@ -591,14 +623,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     };
     
     // Save to services list
-    if (onUpdateServices) {
-      onUpdateServices([fullService, ...services]);
-    }
+    const updatedServices = [fullService, ...services.filter((s) => s.id !== fullService.id)];
     if (onAddService) {
       onAddService(fullService);
+    } else if (onUpdateServices) {
+      onUpdateServices(updatedServices);
     }
     try {
-      localStorage.setItem('ezyseva_services', JSON.stringify([fullService, ...services]));
+      localStorage.setItem('ezyseva_services', JSON.stringify(updatedServices));
     } catch (err) {
       console.warn('Storage sync failed', err);
     }
@@ -673,20 +705,35 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     }
   };
 
-  // Filtered orders
-  const filteredOrders = applications.filter((app) => {
-    const matchesStatus = orderFilterStatus === 'all' || app.status === orderFilterStatus;
-    const q = orderSearch.toLowerCase().trim();
-    if (!q) return matchesStatus;
-    return (
-      matchesStatus &&
-      (app.trackingId.toLowerCase().includes(q) ||
+  // Filtered orders with State, District, Status & Search filtering
+  const filteredOrders = useMemo(() => {
+    return applications.filter((app) => {
+      const matchesStatus = orderFilterStatus === 'all' || app.status === orderFilterStatus;
+      
+      const appState = (app.state || 'West Bengal').trim().toLowerCase();
+      const matchesState = orderFilterState === 'all' || appState === orderFilterState.trim().toLowerCase();
+      
+      const appDistrict = (app.district || '').trim().toLowerCase();
+      const matchesDistrict = orderFilterDistrict === 'all' || appDistrict === orderFilterDistrict.trim().toLowerCase();
+
+      const q = orderSearch.toLowerCase().trim();
+      if (!q) return matchesStatus && matchesState && matchesDistrict;
+
+      const matchesQuery = 
+        app.trackingId.toLowerCase().includes(q) ||
         app.applicantName.toLowerCase().includes(q) ||
         app.mobile.includes(q) ||
+        (app.utrNumber && app.utrNumber.toLowerCase().includes(q)) ||
+        (app.invoiceNumber && app.invoiceNumber.toLowerCase().includes(q)) ||
+        (app.paymentTransactionId && app.paymentTransactionId.toLowerCase().includes(q)) ||
         app.serviceNameEn.toLowerCase().includes(q) ||
-        app.serviceNameBn.toLowerCase().includes(q))
-    );
-  });
+        app.serviceNameBn.toLowerCase().includes(q) ||
+        (app.district && app.district.toLowerCase().includes(q)) ||
+        (app.state && app.state.toLowerCase().includes(q));
+
+      return matchesStatus && matchesState && matchesDistrict && matchesQuery;
+    });
+  }, [applications, orderFilterStatus, orderFilterState, orderFilterDistrict, orderSearch]);
 
   // Calculate metrics
   const totalGovtRevenue = applications.reduce((acc, a) => acc + (a.feePaid || 0), 0);
@@ -781,19 +828,28 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 pt-1">
+                <div className="flex flex-wrap items-center gap-2 pt-1">
                   <button
                     type="button"
                     onClick={handleAutoFillAdminCredentials}
-                    className="flex-1 py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
+                    className="flex-1 min-w-[110px] py-1.5 px-3 rounded-xl bg-purple-600/30 hover:bg-purple-600/50 text-purple-200 border border-purple-400/40 font-bold text-[11px] flex items-center justify-center gap-1.5 transition-all cursor-pointer shadow-xs"
                   >
                     <KeyRound className="w-3 h-3" />
-                    <span>{isBn ? '১-ক্লিকে পূরণ করুন' : '1-Click Auto Fill'}</span>
+                    <span>{isBn ? '১-ক্লিকে পূরণ' : '1-Click Fill'}</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleInstantAdminUnlock}
+                    className="py-1.5 px-3 rounded-xl bg-emerald-600/30 hover:bg-emerald-600/50 text-emerald-200 border border-emerald-400/40 font-bold text-[11px] flex items-center gap-1 transition-all cursor-pointer shadow-xs"
+                    title={isBn ? 'সরাসরি অ্যাডমিন প্যানেলে প্রবেশ করুন' : 'Instantly access Admin Panel'}
+                  >
+                    <ShieldCheck className="w-3 h-3 text-emerald-400" />
+                    <span>{isBn ? 'সরাসরি আনলক' : 'Instant Unlock'}</span>
                   </button>
                   <button
                     type="button"
                     onClick={handleResetAdminCredentialsToDefault}
-                    className="py-1.5 px-3 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 font-medium text-[11px] flex items-center gap-1 transition-all cursor-pointer"
+                    className="py-1.5 px-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white/70 hover:text-white border border-white/10 font-medium text-[11px] flex items-center gap-1 transition-all cursor-pointer"
                     title={isBn ? 'পাসওয়ার্ড ফ্যাক্টরি ডিফল্টে রিসেট করুন' : 'Reset password to factory default'}
                   >
                     <RotateCcw className="w-3 h-3" />
@@ -2391,11 +2447,11 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               s.category.toLowerCase().includes(q)
                             );
                           })
-                          .map((service) => {
+                          .map((service, idx) => {
                             const isActive = service.isActive !== false;
                             const total = service.govtFee + service.convenienceFee;
                             return (
-                              <tr key={service.id} className="hover:bg-white/5 transition-colors">
+                              <tr key={service.id ? `${service.id}-${idx}` : `adm-srv-${idx}`} className="hover:bg-white/5 transition-colors">
                                 <td className="py-3 px-3">
                                   <div className="font-bold text-white">{isBn ? service.titleBn : service.titleEn}</div>
                                   <div className="text-[10px] text-white/50">{service.officialGovtBodyEn}</div>
@@ -2450,81 +2506,300 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
               {/* TAB 3: CITIZEN ORDERS & APPLICATIONS MANAGEMENT */}
               {activeTab === 'orders' && (
                 <div className="space-y-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
+                  {/* Top Bar Header & Controls */}
+                  <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
                     <div>
-                      <h4 className="text-base font-bold text-white">
-                        {isBn ? 'নাগরিক গ্রাহকদের দাখিলকৃত আবেদনসমূহ' : 'Customer Orders & Applications Pipeline'}
+                      <h4 className="text-base font-bold text-white flex items-center gap-2">
+                        <Package className="w-5 h-5 text-blue-400" />
+                        <span>{isBn ? 'নাগরিক গ্রাহকদের দাখিলকৃত আবেদন ও পেমেন্ট হিস্ট্রি' : 'Customer Orders & Payment Records Pipeline'}</span>
                       </h4>
                       <p className="text-xs text-white/60">
                         {isBn
-                          ? 'গ্রাহকদের আবেদন যাচাই করুন, স্ট্যাটাস ধাপ পরিবর্তন করুন ও রিমার্ক্স লিখে পাঠান।'
-                          : 'Verify customer documents, advance status stages (1 to 4), and dispatch certificates.'}
+                          ? 'গ্রাহকদের অর্ডার, ইউটিআই/ইউটিআর নম্বর, জিএসটি ইনভয়েস ও রাজ্য/জেলা ভিত্তিক আবেদন ট্র্যাক ও যাচাই করুন।'
+                          : 'Monitor customer applications, verify UTR payment numbers, inspect GST invoices, and filter by State/District.'}
                       </p>
                     </div>
 
+                    {/* Filter Controls: State, District, Status & Search */}
                     <div className="flex flex-wrap items-center gap-2">
+                      {/* State Filter */}
+                      <div className="relative">
+                        <select
+                          value={orderFilterState}
+                          onChange={(e) => {
+                            setOrderFilterState(e.target.value);
+                            setOrderFilterDistrict('all');
+                          }}
+                          className="px-3 py-1.5 rounded-xl border border-white/15 bg-[#0e0e24] text-xs text-white focus:border-blue-400 focus:outline-hidden"
+                          title={isBn ? 'রাজ্য নির্বাচন করুন' : 'Select State'}
+                        >
+                          <option value="all">{isBn ? '🌐 সব রাজ্য (All States)' : '🌐 All States'}</option>
+                          {ALL_INDIAN_STATES.map((st) => (
+                            <option key={st} value={st}>
+                              {st}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* District Filter */}
+                      <div className="relative">
+                        <select
+                          value={orderFilterDistrict}
+                          onChange={(e) => setOrderFilterDistrict(e.target.value)}
+                          disabled={orderFilterState === 'all' && adminAvailableDistricts.length === 0}
+                          className="px-3 py-1.5 rounded-xl border border-white/15 bg-[#0e0e24] text-xs text-white focus:border-blue-400 focus:outline-hidden disabled:opacity-50"
+                          title={isBn ? 'জেলা নির্বাচন করুন' : 'Select District'}
+                        >
+                          <option value="all">
+                            {orderFilterState === 'all' 
+                              ? (isBn ? '📍 সব জেলা (প্রথমে রাজ্য বাছাই করুন)' : '📍 All Districts (Select state)') 
+                              : (isBn ? `📍 সমস্ত জেলা (${adminAvailableDistricts.length}টি)` : `📍 All Districts (${adminAvailableDistricts.length})`)}
+                          </option>
+                          {adminAvailableDistricts.map((dst) => (
+                            <option key={dst} value={dst}>
+                              {dst}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Status Filter */}
                       <select
                         value={orderFilterStatus}
                         onChange={(e) => setOrderFilterStatus(e.target.value)}
-                        className="px-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-xs text-white focus:outline-hidden"
+                        className="px-3 py-1.5 rounded-xl border border-white/15 bg-[#0e0e24] text-xs text-white focus:border-blue-400 focus:outline-hidden"
                       >
-                        <option value="all" className="bg-[#0e0e24] text-white">{isBn ? 'সমস্ত স্ট্যাটাস' : 'All Statuses'}</option>
-                        <option value="submitted" className="bg-[#0e0e24] text-white">Submitted</option>
-                        <option value="verification" className="bg-[#0e0e24] text-white">Verification</option>
-                        <option value="department_processing" className="bg-[#0e0e24] text-white">Processing</option>
-                        <option value="approved" className="bg-[#0e0e24] text-white">Approved / Delivered</option>
+                        <option value="all">{isBn ? 'সব স্ট্যাটাস' : 'All Statuses'}</option>
+                        <option value="submitted">{isBn ? '১. আবেদন জমা (Submitted)' : '1. Submitted'}</option>
+                        <option value="verification">{isBn ? '২. নথি যাচাই (Verification)' : '2. Verification'}</option>
+                        <option value="department_processing">{isBn ? '৩. প্রক্রিয়াধীন (Processing)' : '3. Processing'}</option>
+                        <option value="approved">{isBn ? '৪. অনুমোদিত (Approved)' : '4. Approved'}</option>
                       </select>
 
+                      {/* Search input */}
                       <div className="relative">
                         <Search className="w-3.5 h-3.5 text-white/40 absolute left-3 top-2.5" />
                         <input
                           type="text"
                           value={orderSearch}
                           onChange={(e) => setOrderSearch(e.target.value)}
-                          placeholder={isBn ? 'আইডি বা নাম খুঁজুন...' : 'Search tracking ID / name...'}
-                          className="pl-8 pr-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-xs text-white placeholder-white/40 focus:outline-hidden"
+                          placeholder={isBn ? 'আইডি, UTR, ইনভয়েস বা নাম...' : 'Search ID, UTR, Invoice, Name...'}
+                          className="pl-8 pr-3 py-1.5 rounded-xl border border-white/15 bg-white/5 text-xs text-white placeholder-white/40 focus:outline-hidden min-w-[170px]"
                         />
+                      </div>
+
+                      {/* Clear Filters Button */}
+                      {(orderFilterState !== 'all' || orderFilterDistrict !== 'all' || orderFilterStatus !== 'all' || orderSearch.trim() !== '') && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOrderFilterState('all');
+                            setOrderFilterDistrict('all');
+                            setOrderFilterStatus('all');
+                            setOrderSearch('');
+                          }}
+                          className="px-2.5 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-300 text-xs font-semibold border border-red-500/30 transition-all flex items-center gap-1"
+                          title={isBn ? 'ফিল্টার রিসেট' : 'Reset Filters'}
+                        >
+                          <RotateCcw className="w-3 h-3" />
+                          <span>{isBn ? 'মুছুন' : 'Clear'}</span>
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* Summary Metric Stats Bar */}
+                  <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-blue-500/20 text-blue-400 flex items-center justify-center shrink-0">
+                        <Package className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/50 block">{isBn ? 'মোট আবেদন' : 'Total Orders'}</span>
+                        <strong className="text-sm text-white font-mono">{applications.length}</strong>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-400 flex items-center justify-center shrink-0">
+                        <Banknote className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/50 block">{isBn ? 'মোট সংগৃহীত রাজস্ব' : 'Settled Revenue'}</span>
+                        <strong className="text-sm text-emerald-300 font-mono">₹{totalGovtRevenue}</strong>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-400 flex items-center justify-center shrink-0">
+                        <Zap className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/50 block">{isBn ? 'ইউটিআর ভেরিফাইড' : 'UTR Verified'}</span>
+                        <strong className="text-sm text-purple-300 font-mono">
+                          {applications.filter((a) => a.utrNumber).length}
+                        </strong>
+                      </div>
+                    </div>
+
+                    <div className="bg-white/5 border border-white/10 rounded-xl p-3 flex items-center gap-3">
+                      <div className="w-8 h-8 rounded-lg bg-amber-500/20 text-amber-400 flex items-center justify-center shrink-0">
+                        <Receipt className="w-4 h-4" />
+                      </div>
+                      <div>
+                        <span className="text-[10px] text-white/50 block">{isBn ? 'জিএসটি ইনভয়েস' : 'GST Invoices'}</span>
+                        <strong className="text-sm text-amber-300 font-mono">
+                          {applications.filter((a) => a.invoiceNumber).length}
+                        </strong>
                       </div>
                     </div>
                   </div>
 
+                  {/* Active Filter Notice if Filtered */}
+                  {(orderFilterState !== 'all' || orderFilterDistrict !== 'all' || orderFilterStatus !== 'all' || orderSearch.trim() !== '') && (
+                    <div className="text-xs text-white/70 bg-blue-500/10 border border-blue-400/20 px-3.5 py-2 rounded-xl flex items-center justify-between gap-2">
+                      <div className="flex items-center gap-2">
+                        <Search className="w-3.5 h-3.5 text-blue-400" />
+                        <span>
+                          {isBn
+                            ? `ফিল্টার অনুযায়ী ${filteredOrders.length}টি অর্ডার প্রদর্শিত হচ্ছে`
+                            : `Showing ${filteredOrders.length} orders matching your active filters`}
+                          {orderFilterState !== 'all' && ` • State: ${orderFilterState}`}
+                          {orderFilterDistrict !== 'all' && ` • District: ${orderFilterDistrict}`}
+                        </span>
+                      </div>
+                      <span className="text-[11px] text-blue-300 font-bold font-mono">
+                        {filteredOrders.length} / {applications.length}
+                      </span>
+                    </div>
+                  )}
+
                   {/* Order Process Modal / Card */}
                   {selectedOrderToEdit && (
-                    <div className="bg-white/5 border-2 border-blue-400/40 rounded-2xl p-5 space-y-4 animate-in fade-in duration-200">
+                    <div className="bg-gradient-to-br from-blue-950/30 via-white/5 to-white/5 border-2 border-blue-400/40 rounded-2xl p-5 space-y-4 animate-in fade-in duration-200 shadow-xl">
                       <div className="flex items-center justify-between border-b border-white/10 pb-3">
                         <div>
-                          <div className="text-xs font-bold text-blue-400">
-                            {isBn ? 'আবেদন প্রসেসিং কনসোল' : 'Order Processing Console'}
+                          <div className="text-xs font-bold text-blue-400 flex items-center gap-1.5">
+                            <Sliders className="w-3.5 h-3.5" />
+                            <span>{isBn ? 'আবেদন ও পেমেন্ট প্রসেসিং কনসোল' : 'Application & Payment Processing Console'}</span>
                           </div>
-                          <h5 className="font-extrabold text-sm text-white">
+                          <h5 className="font-extrabold text-sm text-white mt-0.5">
                             {selectedOrderToEdit.trackingId} — {selectedOrderToEdit.applicantName}
                           </h5>
                         </div>
-                        <button
-                          onClick={() => setSelectedOrderToEdit(null)}
-                          className="text-white/60 hover:text-white"
-                        >
-                          <X className="w-4 h-4" />
-                        </button>
+                        <div className="flex items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => setSelectedAdminInvoiceOrder(selectedOrderToEdit)}
+                            className="px-3 py-1.5 rounded-xl bg-amber-500/20 hover:bg-amber-500/30 text-amber-300 border border-amber-400/40 text-xs font-bold flex items-center gap-1.5 shadow-sm transition-all"
+                          >
+                            <Receipt className="w-3.5 h-3.5" />
+                            <span>{isBn ? 'ট্যাক্স ইনভয়েস দেখুন' : 'View Tax Invoice'}</span>
+                          </button>
+                          <button
+                            onClick={() => setSelectedOrderToEdit(null)}
+                            className="text-white/60 hover:text-white p-1"
+                          >
+                            <X className="w-4 h-4" />
+                          </button>
+                        </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 text-xs">
-                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                          <span className="text-white/50 text-[11px]">{isBn ? 'পরিষেবা:' : 'Service:'}</span>
-                          <div className="font-bold text-white">{isBn ? selectedOrderToEdit.serviceNameBn : selectedOrderToEdit.serviceNameEn}</div>
+                      {/* Info Cards Grid */}
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 text-xs">
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-0.5">
+                          <span className="text-white/50 text-[11px] block">{isBn ? 'পরিষেবা:' : 'Service:'}</span>
+                          <div className="font-bold text-white leading-tight">
+                            {isBn ? selectedOrderToEdit.serviceNameBn : selectedOrderToEdit.serviceNameEn}
+                          </div>
+                          <div className="text-[10px] text-white/50 font-mono">
+                            {selectedOrderToEdit.appliedDate}
+                          </div>
                         </div>
-                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                          <span className="text-white/50 text-[11px]">{isBn ? 'মোবাইল ও আধার:' : 'Mobile & Aadhaar:'}</span>
-                          <div className="font-bold text-white font-mono">{selectedOrderToEdit.mobile} (Aadhaar: •••• {selectedOrderToEdit.aadhaarLast4})</div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-0.5">
+                          <span className="text-white/50 text-[11px] block">{isBn ? 'গ্রাহক ও মোবাইল:' : 'Customer & Phone:'}</span>
+                          <div className="font-bold text-white">{selectedOrderToEdit.applicantName}</div>
+                          <div className="text-[11px] text-blue-300 font-mono">📱 {selectedOrderToEdit.mobile}</div>
+                          {selectedOrderToEdit.aadhaarLast4 && (
+                            <div className="text-[10px] text-white/50 font-mono">Aadhaar: •••• {selectedOrderToEdit.aadhaarLast4}</div>
+                          )}
                         </div>
-                        <div className="p-3 bg-white/5 rounded-xl border border-white/10">
-                          <span className="text-white/50 text-[11px]">{isBn ? 'পরিশোধিত ফি:' : 'Fee Settled:'}</span>
-                          <div className="font-bold text-emerald-300 font-mono">₹{selectedOrderToEdit.feePaid}</div>
+
+                        <div className="p-3 bg-white/5 rounded-xl border border-white/10 space-y-0.5">
+                          <span className="text-white/50 text-[11px] block">{isBn ? 'রাজ্য ও জেলা:' : 'State & District:'}</span>
+                          <div className="font-bold text-emerald-300 flex items-center gap-1">
+                            <MapPin className="w-3 h-3 text-emerald-400 shrink-0" />
+                            <span>{selectedOrderToEdit.district || 'Kolkata'}, {selectedOrderToEdit.state || 'West Bengal'}</span>
+                          </div>
+                          {selectedOrderToEdit.pincode && (
+                            <div className="text-[10px] text-white/50 font-mono">PIN: {selectedOrderToEdit.pincode}</div>
+                          )}
                         </div>
+
+                        <div className="p-3 bg-emerald-950/20 rounded-xl border border-emerald-500/20 space-y-0.5">
+                          <span className="text-emerald-300/80 text-[11px] block">{isBn ? 'পরিশোধিত মোট ফি:' : 'Total Settled:'}</span>
+                          <div className="font-extrabold text-emerald-300 text-sm font-mono">
+                            ₹{selectedOrderToEdit.feePaid}
+                          </div>
+                          <div className="text-[10px] text-emerald-300/70 font-mono">
+                            {selectedOrderToEdit.paymentMethod || 'Online Gateway / UPI'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Detailed Payment, UTR & Invoice Metadata Box */}
+                      <div className="bg-gradient-to-r from-amber-950/30 via-white/5 to-purple-950/30 border border-amber-500/20 rounded-xl p-3.5 text-xs space-y-2">
+                        <div className="flex flex-wrap items-center justify-between gap-2">
+                          <div className="flex items-center gap-2 font-bold text-amber-300">
+                            <Receipt className="w-4 h-4 text-amber-400" />
+                            <span>{isBn ? 'পেমেন্ট ও ট্যাক্স ইনভয়েস বিবরণ (Payment & Invoice Verification):' : 'Payment & Tax Invoice Verification Details:'}</span>
+                          </div>
+                          <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 font-mono">
+                            PAID & VERIFIED
+                          </span>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2.5 font-mono text-[11px]">
+                          <div className="bg-black/30 p-2 rounded-lg border border-white/10">
+                            <span className="text-[10px] text-white/50 block font-sans">
+                              {isBn ? 'ইউটিআই / ইউটিআর নম্বর (UTR / Bank Ref):' : 'UTR / Bank Ref Number:'}
+                            </span>
+                            <strong className="text-purple-300 font-bold tracking-wider select-all">
+                              {selectedOrderToEdit.utrNumber || selectedOrderToEdit.paymentTransactionId || 'UTR-NOT-RECORDED'}
+                            </strong>
+                          </div>
+
+                          <div className="bg-black/30 p-2 rounded-lg border border-white/10">
+                            <span className="text-[10px] text-white/50 block font-sans">
+                              {isBn ? 'ট্যাক্স ইনভয়েস নম্বর (GST Invoice):' : 'GST Invoice Number:'}
+                            </span>
+                            <strong className="text-amber-300 font-bold tracking-wider select-all">
+                              {selectedOrderToEdit.invoiceNumber || 'INV-PENDING'}
+                            </strong>
+                          </div>
+
+                          <div className="bg-black/30 p-2 rounded-lg border border-white/10">
+                            <span className="text-[10px] text-white/50 block font-sans">
+                              {isBn ? 'পেমেন্ট টাইমস্ট্যাম্প (Timestamp):' : 'Payment Timestamp:'}
+                            </span>
+                            <span className="text-white/80">
+                              {selectedOrderToEdit.paymentTimestamp || selectedOrderToEdit.appliedDate}
+                            </span>
+                          </div>
+                        </div>
+
+                        {selectedOrderToEdit.address && (
+                          <div className="pt-1 text-[11px] text-white/60">
+                            <span className="text-white/40">{isBn ? 'গ্রাহকের ঠিকানা: ' : 'Customer Address: '}</span>
+                            <span className="text-white/80">{selectedOrderToEdit.address}</span>
+                          </div>
+                        )}
                       </div>
 
                       {/* Advance Stage Control */}
-                      <div className="space-y-2 pt-2">
+                      <div className="space-y-2 pt-1">
                         <label className="block text-xs font-bold text-white">
                           {isBn ? 'স্ট্যাটাস ও প্রসেসিং ধাপ পরিবর্তন করুন:' : 'Advance Application Processing Stage:'}
                         </label>
@@ -2542,7 +2817,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             }
                             className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
                               selectedOrderToEdit.currentStageNumber === 1
-                                ? 'border-blue-400 bg-blue-500/20 text-white'
+                                ? 'border-blue-400 bg-blue-500/20 text-white shadow-sm'
                                 : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                             }`}
                           >
@@ -2563,7 +2838,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             }
                             className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
                               selectedOrderToEdit.currentStageNumber === 2
-                                ? 'border-amber-400 bg-amber-500/20 text-white'
+                                ? 'border-amber-400 bg-amber-500/20 text-white shadow-sm'
                                 : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                             }`}
                           >
@@ -2584,7 +2859,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             }
                             className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
                               selectedOrderToEdit.currentStageNumber === 3
-                                ? 'border-purple-400 bg-purple-500/20 text-white'
+                                ? 'border-purple-400 bg-purple-500/20 text-white shadow-sm'
                                 : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                             }`}
                           >
@@ -2605,7 +2880,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                             }
                             className={`p-2.5 rounded-xl border text-xs font-bold text-left transition-all ${
                               selectedOrderToEdit.currentStageNumber === 4
-                                ? 'border-emerald-400 bg-emerald-500/20 text-white'
+                                ? 'border-emerald-400 bg-emerald-500/20 text-white shadow-sm'
                                 : 'border-white/10 bg-white/5 text-white/70 hover:bg-white/10'
                             }`}
                           >
@@ -2618,7 +2893,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                       {/* Official Remarks Input */}
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div>
-                          <label className="block text-xs font-bold text-white/80 mb-1">অফিসিয়াল মন্তব্য (বাংলায় - গ্রাহক ট্র্যাকিংয়ে দেখতে পাবেন)</label>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            {isBn ? 'অফিসিয়াল মন্তব্য (বাংলায় - গ্রাহক ট্র্যাকিংয়ে দেখতে পাবেন)' : 'Official Remarks (Bengali - Visible to citizen)'}
+                          </label>
                           <input
                             type="text"
                             value={selectedOrderToEdit.remarksBn}
@@ -2634,7 +2911,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                           />
                         </div>
                         <div>
-                          <label className="block text-xs font-bold text-white/80 mb-1">Official Remarks (English)</label>
+                          <label className="block text-xs font-bold text-white/80 mb-1">
+                            Official Remarks (English)
+                          </label>
                           <input
                             type="text"
                             value={selectedOrderToEdit.remarksEn}
@@ -2653,54 +2932,119 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                     </div>
                   )}
 
-                  {/* Orders Table */}
+                  {/* Orders & Payments Table */}
                   <div className="overflow-x-auto border border-white/10 rounded-2xl bg-white/[0.02]">
-                    <table className="w-full text-left text-xs border-collapse">
+                    <table className="w-full text-left text-xs border-collapse min-w-[700px]">
                       <thead>
                         <tr className="border-b border-white/10 text-white/50 font-bold uppercase text-[10px] bg-white/[0.02]">
-                          <th className="py-2.5 px-3">{isBn ? 'ট্র্যাকিং আইডি' : 'Tracking ID'}</th>
-                          <th className="py-2.5 px-3">{isBn ? 'আবেদনকারী' : 'Applicant'}</th>
+                          <th className="py-2.5 px-3">{isBn ? 'ট্র্যাকিং ও ইনভয়েস' : 'Tracking & Invoice'}</th>
+                          <th className="py-2.5 px-3">{isBn ? 'আবেদনকারী ও অবস্থান' : 'Applicant & State/District'}</th>
                           <th className="py-2.5 px-3">{isBn ? 'পরিষেবা' : 'Service'}</th>
+                          <th className="py-2.5 px-3">{isBn ? 'পেমেন্ট ও ইউটিআর' : 'Payment & UTR'}</th>
                           <th className="py-2.5 px-3">{isBn ? 'তারিখ' : 'Date'}</th>
-                          <th className="py-2.5 px-3">{isBn ? 'ফি' : 'Fee'}</th>
                           <th className="py-2.5 px-3">{isBn ? 'ধাপ' : 'Stage'}</th>
-                          <th className="py-2.5 px-3 text-right">{isBn ? 'প্রসেসিং' : 'Action'}</th>
+                          <th className="py-2.5 px-3 text-right">{isBn ? 'অ্যাকশন' : 'Actions'}</th>
                         </tr>
                       </thead>
                       <tbody className="divide-y divide-white/5">
-                        {filteredOrders.map((order) => (
-                          <tr key={order.trackingId} className="hover:bg-white/5 transition-colors">
-                            <td className="py-3 px-3 font-mono font-bold text-blue-300">
-                              {order.trackingId}
-                            </td>
-                            <td className="py-3 px-3">
-                              <div className="font-bold text-white">{order.applicantName}</div>
-                              <div className="text-[10px] text-white/50 font-mono">📱 {order.mobile}</div>
-                            </td>
-                            <td className="py-3 px-3">
-                              <div className="font-medium text-white">{isBn ? order.serviceNameBn : order.serviceNameEn}</div>
-                            </td>
-                            <td className="py-3 px-3 text-white/60 font-mono text-[11px]">
-                              {order.appliedDate}
-                            </td>
-                            <td className="py-3 px-3 font-mono font-bold text-emerald-400">
-                              ₹{order.feePaid}
-                            </td>
-                            <td className="py-3 px-3">
-                              <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/20">
-                                {isBn ? `ধাপ ${order.currentStageNumber}/৪` : `Stage ${order.currentStageNumber}/4`}
-                              </span>
-                            </td>
-                            <td className="py-3 px-3 text-right">
-                              <button
-                                onClick={() => setSelectedOrderToEdit(order)}
-                                className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold shadow-sm"
-                              >
-                                {isBn ? 'প্রসেস করুন' : 'Process'}
-                              </button>
+                        {filteredOrders.length === 0 ? (
+                          <tr>
+                            <td colSpan={7} className="py-8 text-center text-white/40">
+                              {isBn ? 'কোনো অর্ডার পাওয়া যায়নি।' : 'No orders found matching the filter.'}
                             </td>
                           </tr>
-                        ))}
+                        ) : (
+                          filteredOrders.map((order, idx) => (
+                            <tr key={order.trackingId ? `${order.trackingId}-${idx}` : `adm-ord-${idx}`} className="hover:bg-white/5 transition-colors">
+                              {/* Tracking ID & Invoice Number */}
+                              <td className="py-3 px-3">
+                                <div className="font-mono font-bold text-blue-300">
+                                  {order.trackingId}
+                                </div>
+                                {order.invoiceNumber ? (
+                                  <div className="text-[10px] font-mono text-amber-300/90 font-medium">
+                                    #{order.invoiceNumber}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] text-white/30 font-mono">Invoice Pending</div>
+                                )}
+                              </td>
+
+                              {/* Applicant & Location (State + District) */}
+                              <td className="py-3 px-3">
+                                <div className="font-bold text-white">{order.applicantName}</div>
+                                <div className="text-[10px] text-white/50 font-mono">📱 {order.mobile}</div>
+                                <div className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
+                                  <MapPin className="w-2.5 h-2.5 shrink-0" />
+                                  <span>{order.district || 'Kolkata'}, {order.state || 'West Bengal'}</span>
+                                </div>
+                              </td>
+
+                              {/* Service Name */}
+                              <td className="py-3 px-3">
+                                <div className="font-medium text-white max-w-[170px] truncate">
+                                  {isBn ? order.serviceNameBn : order.serviceNameEn}
+                                </div>
+                                <div className="text-[10px] text-white/40 capitalize">{order.category}</div>
+                              </td>
+
+                              {/* Payment & UTR */}
+                              <td className="py-3 px-3">
+                                <div className="font-mono font-bold text-emerald-400">
+                                  ₹{order.feePaid}
+                                </div>
+                                {order.utrNumber ? (
+                                  <div className="text-[10px] font-mono text-purple-300 bg-purple-500/10 px-1.5 py-0.5 rounded border border-purple-400/20 inline-block max-w-[140px] truncate" title={order.utrNumber}>
+                                    UTR: {order.utrNumber}
+                                  </div>
+                                ) : (
+                                  <div className="text-[10px] font-mono text-white/40">
+                                    Txn: {order.paymentTransactionId || 'N/A'}
+                                  </div>
+                                )}
+                              </td>
+
+                              {/* Date */}
+                              <td className="py-3 px-3 text-white/60 font-mono text-[11px]">
+                                <div>{order.appliedDate}</div>
+                                {order.paymentTimestamp && (
+                                  <div className="text-[9px] text-white/40">{order.paymentTimestamp.split(' ')[1]}</div>
+                                )}
+                              </td>
+
+                              {/* Stage */}
+                              <td className="py-3 px-3">
+                                <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/20 text-blue-300 border border-blue-400/20 whitespace-nowrap">
+                                  {isBn ? `ধাপ ${order.currentStageNumber}/৪` : `Stage ${order.currentStageNumber}/4`}
+                                </span>
+                              </td>
+
+                              {/* Actions: View Invoice & Process */}
+                              <td className="py-3 px-3 text-right">
+                                <div className="flex items-center justify-end gap-1.5">
+                                  {/* Invoice Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedAdminInvoiceOrder(order)}
+                                    className="p-1.5 bg-amber-500/15 hover:bg-amber-500/30 text-amber-300 rounded-lg text-xs font-bold border border-amber-400/20 transition-colors"
+                                    title={isBn ? 'ট্যাক্স ইনভয়েস দেখুন ও ডাউনলোড' : 'View Tax Invoice'}
+                                  >
+                                    <Receipt className="w-3.5 h-3.5" />
+                                  </button>
+
+                                  {/* Process Button */}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedOrderToEdit(order)}
+                                    className="px-2.5 py-1 bg-blue-600 hover:bg-blue-500 text-white rounded-lg text-[11px] font-bold shadow-sm transition-colors"
+                                  >
+                                    {isBn ? 'প্রসেস' : 'Process'}
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))
+                        )}
                       </tbody>
                     </table>
                   </div>
@@ -2722,9 +3066,9 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {kendras.map((kendra) => (
+                    {kendras.map((kendra, idx) => (
                       <div
-                        key={kendra.id}
+                        key={kendra.id ? `${kendra.id}-${idx}` : `adm-knd-${idx}`}
                         className="bg-white/5 border border-white/10 rounded-2xl p-4 space-y-2"
                       >
                         <div className="flex items-center justify-between">
@@ -2754,6 +3098,15 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
         )}
 
       </div>
+
+      {/* Admin Tax Invoice Modal */}
+      {selectedAdminInvoiceOrder && (
+        <InvoiceModal
+          application={selectedAdminInvoiceOrder}
+          language={language}
+          onClose={() => setSelectedAdminInvoiceOrder(null)}
+        />
+      )}
     </div>
   );
 };

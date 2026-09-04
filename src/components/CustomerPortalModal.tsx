@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { 
   X, 
   User, 
@@ -25,10 +25,14 @@ import {
   KeyRound,
   UserPlus,
   Package,
-  AlertTriangle
+  AlertTriangle,
+  Receipt,
+  Globe2
 } from 'lucide-react';
 import { Language, CustomerUser, ApplicationRecord, ServiceItem } from '../types';
 import { INITIAL_CUSTOMERS } from '../data/settingsData';
+import { InvoiceModal } from './InvoiceModal';
+import { ALL_INDIAN_STATES, getDistrictsForState } from '../data/locationsData';
 
 interface CustomerPortalModalProps {
   isOpen: boolean;
@@ -101,15 +105,22 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
   const [loginPassword, setLoginPassword] = useState('');
   const [showLoginPassword, setShowLoginPassword] = useState(false);
 
+  // Invoice Viewer Modal
+  const [selectedInvoiceOrder, setSelectedInvoiceOrder] = useState<ApplicationRecord | null>(null);
+
   // Register Form States
   const [regName, setRegName] = useState('');
   const [regMobile, setRegMobile] = useState('');
+  const [regState, setRegState] = useState('West Bengal');
   const [regDistrict, setRegDistrict] = useState('North 24 Parganas');
   const [regPincode, setRegPincode] = useState('');
   const [regAddress, setRegAddress] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirmPassword, setRegConfirmPassword] = useState('');
   const [showRegPassword, setShowRegPassword] = useState(false);
+
+  // Dynamic districts for registration state
+  const regDistricts = useMemo(() => getDistrictsForState(regState), [regState]);
 
   // Auth & Pin Change feedback
   const [authError, setAuthError] = useState('');
@@ -123,9 +134,13 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
   const [editName, setEditName] = useState(customer?.name || '');
   const [editEmail, setEditEmail] = useState(customer?.email || '');
   const [editAddress, setEditAddress] = useState(customer?.address || '');
+  const [editState, setEditState] = useState(customer?.state || 'West Bengal');
   const [editDistrict, setEditDistrict] = useState(customer?.district || 'Kolkata');
   const [editPincode, setEditPincode] = useState(customer?.pincode || '');
   const [profileSavedMsg, setProfileSavedMsg] = useState(false);
+
+  // Dynamic districts for edit profile state
+  const editDistricts = useMemo(() => getDistrictsForState(editState), [editState]);
 
   // New Order service search inside customer panel
   const [serviceFilter, setServiceFilter] = useState('');
@@ -142,8 +157,10 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
       setEditName(customer.name);
       setEditEmail(customer.email || '');
       setEditAddress(customer.address);
+      setEditState(customer.state || 'West Bengal');
       setEditDistrict(customer.district);
       setEditPincode(customer.pincode);
+      setProfileSavedMsg(false);
     }
   };
 
@@ -232,6 +249,7 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
       password: regPassword,
       email: `${cleanMobile}@citizen.ezyseva.in`,
       aadhaar: `5412${Math.floor(1000 + Math.random() * 9000)}${cleanMobile.slice(-4)}`,
+      state: regState,
       district: regDistrict,
       pincode: regPincode.trim() || '700001',
       address: regAddress.trim() || (isBn ? 'পশ্চিমবঙ্গ, ভারত' : 'West Bengal, India'),
@@ -312,6 +330,7 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
       name: editName,
       email: editEmail,
       address: editAddress,
+      state: editState,
       district: editDistrict,
       pincode: editPincode,
     };
@@ -331,17 +350,22 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
     setTimeout(() => setWalletMsg(''), 3000);
   };
 
-  // Filter available services
-  const filteredServicesForOrder = services.filter((s) => {
-    if (s.isActive === false) return false;
+  // Filter available services (strictly deduplicated)
+  const filteredServicesForOrder = useMemo(() => {
     const q = serviceFilter.toLowerCase().trim();
-    if (!q) return true;
-    return (
-      s.titleEn.toLowerCase().includes(q) ||
-      s.titleBn.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
-    );
-  });
+    const seen = new Set<string>();
+    const result: ServiceItem[] = [];
+
+    for (const s of services) {
+      if (!s || !s.id || seen.has(s.id)) continue;
+      seen.add(s.id);
+      if (s.isActive === false) continue;
+      if (!q || s.titleEn.toLowerCase().includes(q) || s.titleBn.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)) {
+        result.push(s);
+      }
+    }
+    return result;
+  }, [services, serviceFilter]);
 
   const getStatusBadge = (status: ApplicationRecord['status'], stage: number) => {
     switch (status) {
@@ -566,7 +590,29 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-white/80 mb-1 flex items-center gap-1">
+                        <Globe2 className="w-3 h-3 text-blue-400" />
+                        <span>{isBn ? 'রাজ্য' : 'State / UT'}</span>
+                      </label>
+                      <select
+                        value={regState}
+                        onChange={(e) => {
+                          const st = e.target.value;
+                          setRegState(st);
+                          const dList = getDistrictsForState(st);
+                          if (dList.length > 0) setRegDistrict(dList[0].nameEn);
+                        }}
+                        className="w-full px-3.5 py-2 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs focus:border-blue-400 focus:outline-hidden"
+                      >
+                        {ALL_INDIAN_STATES.map((st) => (
+                          <option key={st.code} value={st.nameEn} className="bg-[#0e0e24] text-white">
+                            {isBn ? `${st.nameBn} (${st.nameEn})` : `${st.nameEn} (${st.code})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="block text-xs font-bold text-white/80 mb-1">
                         {isBn ? 'জেলা' : 'District'}
@@ -576,17 +622,11 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                         onChange={(e) => setRegDistrict(e.target.value)}
                         className="w-full px-3.5 py-2 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs focus:border-blue-400 focus:outline-hidden"
                       >
-                        <option value="Kolkata">Kolkata</option>
-                        <option value="North 24 Parganas">North 24 Parganas</option>
-                        <option value="South 24 Parganas">South 24 Parganas</option>
-                        <option value="Howrah">Howrah</option>
-                        <option value="Hooghly">Hooghly</option>
-                        <option value="Purba Medinipur">Purba Medinipur</option>
-                        <option value="Paschim Medinipur">Paschim Medinipur</option>
-                        <option value="Murshidabad">Murshidabad</option>
-                        <option value="Nadia">Nadia</option>
-                        <option value="Burdwan">Burdwan</option>
-                        <option value="Siliguri">Siliguri / Darjeeling</option>
+                        {regDistricts.map((d) => (
+                          <option key={d.nameEn} value={d.nameEn} className="bg-[#0e0e24] text-white">
+                            {isBn ? `${d.nameBn} (${d.nameEn})` : d.nameEn}
+                          </option>
+                        ))}
                       </select>
                     </div>
                     <div>
@@ -805,11 +845,11 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
 
                   {customerOrders.length > 0 ? (
                     <div className="space-y-3">
-                      {customerOrders.map((order) => {
+                      {customerOrders.map((order, idx) => {
                         const badge = getStatusBadge(order.status, order.currentStageNumber);
                         return (
                           <div
-                            key={order.trackingId}
+                            key={order.trackingId ? `${order.trackingId}-${idx}` : `cust-ord-${idx}`}
                             className="bg-white/5 hover:bg-white/[0.08] transition-all border border-white/10 rounded-2xl p-4 space-y-3"
                           >
                             <div className="flex flex-wrap items-start justify-between gap-2">
@@ -826,7 +866,7 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                                   {isBn ? 'ট্র্যাকিং আইডি' : 'Tracking ID'}: <strong className="text-blue-300">{order.trackingId}</strong> | {order.appliedDate}
                                 </div>
                                 
-                                {/* Speed Post consignment badge & Payment Txn */}
+                                {/* Speed Post consignment badge & Payment Txn & UTR & Invoice */}
                                 <div className="flex flex-wrap items-center gap-2 mt-1.5">
                                   {order.speedPostNumber && (
                                     <span className="inline-flex items-center gap-1 text-[11px] text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-lg font-mono font-bold">
@@ -838,6 +878,17 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                                     <span className="text-[10px] text-emerald-300 bg-emerald-500/15 border border-emerald-500/30 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1">
                                       <ShieldCheck className="w-3 h-3 text-emerald-400" />
                                       <span>Paid • {order.paymentTransactionId}</span>
+                                    </span>
+                                  )}
+                                  {order.utrNumber && (
+                                    <span className="text-[10px] text-amber-300 bg-amber-500/15 border border-amber-500/30 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1 font-bold">
+                                      <span>UTR: {order.utrNumber}</span>
+                                    </span>
+                                  )}
+                                  {order.invoiceNumber && (
+                                    <span className="text-[10px] text-purple-300 bg-purple-500/15 border border-purple-500/30 px-2 py-0.5 rounded-md font-mono inline-flex items-center gap-1 font-bold">
+                                      <Receipt className="w-3 h-3 text-purple-400" />
+                                      <span>Inv: {order.invoiceNumber}</span>
                                     </span>
                                   )}
                                 </div>
@@ -884,13 +935,12 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
 
                               <div className="flex items-center gap-2 ml-auto">
                                 <button
-                                  onClick={() => {
-                                    alert(isBn ? 'ডিজিটাল প্রাপ্তিস্বীকার রসিদ প্রস্তুত হয়েছে!' : 'Acknowledgment receipt downloaded!');
-                                  }}
-                                  className="flex items-center gap-1 text-[11px] text-white/80 hover:text-white bg-white/10 hover:bg-white/15 px-2.5 py-1 rounded-lg border border-white/15 transition-colors"
+                                  type="button"
+                                  onClick={() => setSelectedInvoiceOrder(order)}
+                                  className="flex items-center gap-1 text-[11px] text-purple-200 hover:text-white bg-purple-600/25 hover:bg-purple-600/40 px-3 py-1 rounded-lg border border-purple-400/40 transition-all font-bold shadow-xs"
                                 >
-                                  <Download className="w-3 h-3" />
-                                  <span>{isBn ? 'রসিদ' : 'Receipt'}</span>
+                                  <Receipt className="w-3.5 h-3.5 text-purple-300" />
+                                  <span>{isBn ? 'ট্যাক্স ইনভয়েস ডাউনলোড' : 'Tax Invoice (GST)'}</span>
                                 </button>
 
                                 <button
@@ -959,9 +1009,9 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 max-h-[50vh] overflow-y-auto pr-1">
-                    {filteredServicesForOrder.map((service) => (
+                    {filteredServicesForOrder.map((service, idx) => (
                       <div
-                        key={service.id}
+                        key={service.id ? `${service.id}-${idx}` : `cust-srv-${idx}`}
                         className="bg-white/5 hover:bg-white/[0.08] transition-all border border-white/10 rounded-2xl p-3.5 flex flex-col justify-between gap-2.5 group"
                       >
                         <div>
@@ -1050,7 +1100,29 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <div>
+                      <label className="block text-xs font-bold text-white/80 mb-1 flex items-center gap-1">
+                        <Globe2 className="w-3 h-3 text-blue-400" />
+                        <span>{isBn ? 'রাজ্য *' : 'State / UT *'}</span>
+                      </label>
+                      <select
+                        value={editState}
+                        onChange={(e) => {
+                          const st = e.target.value;
+                          setEditState(st);
+                          const dList = getDistrictsForState(st);
+                          if (dList.length > 0) setEditDistrict(dList[0].nameEn);
+                        }}
+                        className="w-full px-3 py-2 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs focus:border-blue-400 focus:outline-hidden"
+                      >
+                        {ALL_INDIAN_STATES.map((st) => (
+                          <option key={st.code} value={st.nameEn} className="bg-[#0e0e24] text-white">
+                            {isBn ? `${st.nameBn} (${st.nameEn})` : `${st.nameEn} (${st.code})`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                     <div>
                       <label className="block text-xs font-bold text-white/80 mb-1">
                         {isBn ? 'জেলা *' : 'District *'}
@@ -1058,10 +1130,12 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
                       <select
                         value={editDistrict}
                         onChange={(e) => setEditDistrict(e.target.value)}
-                        className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-blue-400 focus:outline-hidden"
+                        className="w-full px-3 py-2 rounded-xl border border-white/15 bg-[#14142b] text-white text-xs focus:border-blue-400 focus:outline-hidden"
                       >
-                        {['Kolkata', 'North 24 Parganas', 'South 24 Parganas', 'Howrah', 'Hooghly', 'Purba Bardhaman', 'Nadia', 'Murshidabad', 'Siliguri / Darjeeling'].map((d) => (
-                          <option key={d} value={d} className="bg-[#0e0e24] text-white">{d}</option>
+                        {editDistricts.map((d) => (
+                          <option key={d.nameEn} value={d.nameEn} className="bg-[#0e0e24] text-white">
+                            {isBn ? `${d.nameBn} (${d.nameEn})` : d.nameEn}
+                          </option>
                         ))}
                       </select>
                     </div>
@@ -1242,6 +1316,15 @@ export const CustomerPortalModal: React.FC<CustomerPortalModalProps> = ({
         )}
 
       </div>
+
+      {/* Downloadable Tax Invoice Modal */}
+      {selectedInvoiceOrder && (
+        <InvoiceModal
+          application={selectedInvoiceOrder}
+          language={language}
+          onClose={() => setSelectedInvoiceOrder(null)}
+        />
+      )}
     </div>
   );
 };

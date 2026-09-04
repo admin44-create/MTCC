@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { 
   MapPin, 
   Phone, 
@@ -8,9 +8,11 @@ import {
   Navigation, 
   CheckCircle2,
   Building,
-  User
+  User,
+  Globe2
 } from 'lucide-react';
 import { KendraItem, Language } from '../types';
+import { ALL_INDIAN_STATES, getDistrictsForState } from '../data/locationsData';
 
 interface KendraLocatorProps {
   kendras: KendraItem[];
@@ -19,14 +21,25 @@ interface KendraLocatorProps {
 
 export const KendraLocator: React.FC<KendraLocatorProps> = ({ kendras, language }) => {
   const isBn = language === 'bn';
+  const [selectedState, setSelectedState] = useState('WB');
   const [selectedDistrict, setSelectedDistrict] = useState('All');
   const [searchPin, setSearchPin] = useState('');
 
-  const districts = ['All', 'Kolkata', 'North 24 Parganas', 'Howrah', 'Purba Bardhaman', 'Darjeeling / Siliguri', 'Murshidabad'];
+  // Available districts for the selected state
+  const availableDistricts = useMemo(() => {
+    return getDistrictsForState(selectedState);
+  }, [selectedState]);
 
   const filteredKendras = kendras.filter((k) => {
     const matchesDistrict = selectedDistrict === 'All' || k.district.toLowerCase().includes(selectedDistrict.toLowerCase());
-    const matchesPin = !searchPin || k.pincode.includes(searchPin) || k.addressEn.toLowerCase().includes(searchPin.toLowerCase()) || k.nameEn.toLowerCase().includes(searchPin.toLowerCase());
+    const query = searchPin.trim().toLowerCase();
+    const matchesPin = !query || 
+      k.pincode.includes(query) || 
+      k.addressEn.toLowerCase().includes(query) || 
+      k.addressBn.includes(query) || 
+      k.nameEn.toLowerCase().includes(query) ||
+      k.nameBn.includes(query) ||
+      k.district.toLowerCase().includes(query);
     return matchesDistrict && matchesPin;
   });
 
@@ -42,44 +55,84 @@ export const KendraLocator: React.FC<KendraLocatorProps> = ({ kendras, language 
         </h2>
         <p className="text-xs sm:text-sm text-white/60 mt-2">
           {isBn
-            ? 'পশ্চিমবঙ্গের প্রতিটি ব্লকে ও পুর এলাকায় সরকারি স্বীকৃতিপ্রাপ্ত ডিজিটাল সেবা কেন্দ্র থেকে বায়োমেট্রিক ও অফলাইন সহায়তা পান।'
-            : 'Locate certified CSC & EzySeva facilitation centers for biometric capture, instant e-KYC, and cash assisted services.'}
+            ? 'ভারতবর্ষ ও পশ্চিমবঙ্গের প্রতিটি জেলা, ব্লক ও পুর এলাকায় সরকারি স্বীকৃতিপ্রাপ্ত ডিজিটাল সেবা কেন্দ্র থেকে বায়োমেট্রিক ও অফলাইন সহায়তা পান।'
+            : 'Locate certified CSC & EzySeva facilitation centers across all Indian states and districts for biometric capture, instant e-KYC, and assisted services.'}
         </p>
       </div>
 
-      {/* Filter & Search Bar */}
-      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-3 border border-white/20 shadow-2xl max-w-3xl mx-auto mb-8 flex flex-col sm:flex-row items-center gap-3">
+      {/* Filter & Search Bar: All States + All Districts + Search */}
+      <div className="bg-white/5 backdrop-blur-xl rounded-2xl p-3 sm:p-4 border border-white/20 shadow-2xl max-w-4xl mx-auto mb-8 flex flex-col sm:flex-row items-center gap-3">
+        {/* All States Dropdown */}
         <div className="w-full sm:w-1/3">
+          <label className="block text-[10px] text-white/50 uppercase font-bold mb-1 flex items-center gap-1">
+            <Globe2 className="w-3 h-3 text-blue-400" />
+            <span>{isBn ? 'রাজ্য নির্বাচন' : 'Select State'}</span>
+          </label>
           <select
-            value={selectedDistrict}
-            onChange={(e) => setSelectedDistrict(e.target.value)}
-            className="w-full px-3 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm font-semibold text-white bg-white/5 focus:outline-hidden focus:border-blue-400 focus:bg-white/10 backdrop-blur-md"
+            value={selectedState}
+            onChange={(e) => {
+              setSelectedState(e.target.value);
+              setSelectedDistrict('All');
+            }}
+            className="w-full px-3 py-2 rounded-xl border border-white/10 text-xs sm:text-sm font-semibold text-white bg-[#0e0e24] focus:outline-hidden focus:border-blue-400"
           >
-            {districts.map((d) => (
-              <option key={d} value={d} className="bg-[#0e0e24] text-white">
-                {d === 'All' ? (isBn ? 'সমস্ত জেলা (All Districts)' : 'All Districts') : d}
+            <option value="ALL" className="bg-[#0e0e24] text-white">
+              {isBn ? 'সমস্ত রাজ্য (All States / UTs)' : 'All States & UTs (36)'}
+            </option>
+            {ALL_INDIAN_STATES.map((st) => (
+              <option key={st.code} value={st.code} className="bg-[#0e0e24] text-white">
+                {isBn ? `${st.nameBn} (${st.nameEn})` : `${st.nameEn} - ${st.code}`}
               </option>
             ))}
           </select>
         </div>
 
-        <div className="w-full sm:w-2/3 relative flex items-center">
-          <Search className="w-4 h-4 text-white/40 absolute left-3" />
-          <input
-            type="text"
-            value={searchPin}
-            onChange={(e) => setSearchPin(e.target.value)}
-            placeholder={isBn ? 'পিন কোড বা এলাকার নাম দিয়ে খুঁজুন (যেমন: 700091, বারাসাত...)' : 'Search by PIN code, locality or center name...'}
-            className="w-full pl-9 pr-3 py-2.5 rounded-xl border border-white/10 text-xs sm:text-sm focus:outline-hidden focus:border-blue-400 bg-white/5 text-white placeholder-white/40 backdrop-blur-md"
-          />
+        {/* All Districts Dropdown */}
+        <div className="w-full sm:w-1/3">
+          <label className="block text-[10px] text-white/50 uppercase font-bold mb-1 flex items-center gap-1">
+            <MapPin className="w-3 h-3 text-emerald-400" />
+            <span>{isBn ? 'জেলা নির্বাচন' : 'Select District'}</span>
+          </label>
+          <select
+            value={selectedDistrict}
+            onChange={(e) => setSelectedDistrict(e.target.value)}
+            className="w-full px-3 py-2 rounded-xl border border-white/10 text-xs sm:text-sm font-semibold text-white bg-[#0e0e24] focus:outline-hidden focus:border-blue-400"
+          >
+            <option value="All" className="bg-[#0e0e24] text-white">
+              {isBn ? 'সমস্ত জেলা (All Districts)' : 'All Districts'}
+            </option>
+            {availableDistricts.map((d) => (
+              <option key={d.nameEn} value={d.nameEn} className="bg-[#0e0e24] text-white">
+                {isBn ? `${d.nameBn} (${d.nameEn})` : d.nameEn}
+              </option>
+            ))}
+          </select>
+        </div>
+
+        {/* Search by locality / PIN */}
+        <div className="w-full sm:w-1/3">
+          <label className="block text-[10px] text-white/50 uppercase font-bold mb-1 flex items-center gap-1">
+            <Search className="w-3 h-3 text-amber-400" />
+            <span>{isBn ? 'পিন বা এলাকা সার্চ' : 'Pincode / Center Search'}</span>
+          </label>
+          <div className="relative flex items-center">
+            <Search className="w-4 h-4 text-white/40 absolute left-3" />
+            <input
+              type="text"
+              value={searchPin}
+              onChange={(e) => setSearchPin(e.target.value)}
+              placeholder={isBn ? 'পিন কোড, বারাসাত, সল্টলেক...' : 'Search 700091, Salt Lake...'}
+              className="w-full pl-9 pr-3 py-2 rounded-xl border border-white/10 text-xs sm:text-sm focus:outline-hidden focus:border-blue-400 bg-white/5 text-white placeholder-white/40"
+            />
+          </div>
         </div>
       </div>
 
       {/* Kendra Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-        {filteredKendras.map((kendra) => (
+        {filteredKendras.map((kendra, idx) => (
           <div
-            key={kendra.id}
+            key={kendra.id ? `${kendra.id}-${idx}` : `knd-${idx}`}
             className="bg-white/5 backdrop-blur-xl rounded-2xl border border-white/10 shadow-xl hover:border-white/20 hover:bg-white/[0.08] transition-all p-5 flex flex-col justify-between group"
           >
             <div>

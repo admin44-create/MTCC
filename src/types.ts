@@ -86,7 +86,17 @@ export interface ApplicationRecord {
   speedPostNumber?: string;
   paymentMethod?: string;
   paymentTransactionId?: string;
+  utrNumber?: string; // e.g. UTR / URN / UPI Reference number
+  invoiceNumber?: string; // e.g. INV-2026-XXXXX
+  paymentTimestamp?: string;
   paymentStatus?: 'paid' | 'pending';
+  govtFee?: number;
+  convenienceFee?: number;
+  gstAmount?: number;
+  applicantState?: string;
+  applicantDistrict?: string;
+  applicantAddress?: string;
+  applicantPincode?: string;
 }
 
 export interface CustomerUser {
@@ -96,6 +106,7 @@ export interface CustomerUser {
   password?: string;
   email?: string;
   aadhaar: string;
+  state?: string;
   district: string;
   pincode: string;
   address: string;

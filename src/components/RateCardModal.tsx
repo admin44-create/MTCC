@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { X, Receipt, ShieldCheck, CheckCircle2, Clock, Search, HelpCircle } from 'lucide-react';
 import { ServiceItem, Language } from '../types';
 
@@ -20,14 +20,20 @@ export const RateCardModal: React.FC<RateCardModalProps> = ({
   const isBn = language === 'bn';
   const [filterQuery, setFilterQuery] = useState('');
 
-  const filtered = services.filter((s) => {
-    const q = filterQuery.toLowerCase();
-    return (
-      s.titleEn.toLowerCase().includes(q) ||
-      s.titleBn.toLowerCase().includes(q) ||
-      s.category.toLowerCase().includes(q)
-    );
-  });
+  const filtered = useMemo(() => {
+    const q = filterQuery.toLowerCase().trim();
+    const seen = new Set<string>();
+    const result: ServiceItem[] = [];
+
+    for (const s of services) {
+      if (!s || !s.id || seen.has(s.id)) continue;
+      seen.add(s.id);
+      if (!q || s.titleEn.toLowerCase().includes(q) || s.titleBn.toLowerCase().includes(q) || s.category.toLowerCase().includes(q)) {
+        result.push(s);
+      }
+    }
+    return result;
+  }, [services, filterQuery]);
 
   return (
     <div className="fixed inset-0 z-50 overflow-y-auto bg-black/60 backdrop-blur-md flex items-center justify-center p-3 sm:p-4 animate-in fade-in duration-200">
@@ -94,10 +100,10 @@ export const RateCardModal: React.FC<RateCardModalProps> = ({
               </tr>
             </thead>
             <tbody className="divide-y divide-white/5">
-              {filtered.map((s) => {
+              {filtered.map((s, idx) => {
                 const total = s.govtFee + s.convenienceFee;
                 return (
-                  <tr key={s.id} className="hover:bg-white/5 transition-colors">
+                  <tr key={s.id ? `${s.id}-${idx}` : `rc-${idx}`} className="hover:bg-white/5 transition-colors">
                     <td className="py-3 px-3">
                       <div className="font-bold text-white">{isBn ? s.titleBn : s.titleEn}</div>
                       <div className="text-[11px] text-white/50">{isBn ? s.officialGovtBodyBn : s.officialGovtBodyEn}</div>

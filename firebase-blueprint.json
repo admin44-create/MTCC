@@ -1,0 +1,135 @@
+{
+  "entities": {
+    "Service": {
+      "title": "Service",
+      "description": "Digital and printing services provided by MTCC Ma Tara Cyber Cafe",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "titleEn": { "type": "string" },
+        "titleBn": { "type": "string" },
+        "descriptionEn": { "type": "string" },
+        "descriptionBn": { "type": "string" },
+        "category": { "type": "string" },
+        "officialGovtBodyEn": { "type": "string" },
+        "officialGovtBodyBn": { "type": "string" },
+        "govtFee": { "type": "number" },
+        "convenienceFee": { "type": "number" },
+        "offerPrice": { "type": "number" },
+        "processingTimeEn": { "type": "string" },
+        "processingTimeBn": { "type": "string" },
+        "slaHours": { "type": "number" },
+        "badge": { "type": "string" },
+        "isActive": { "type": "boolean" },
+        "deliveryOptions": { "type": "array" },
+        "requiredDocuments": { "type": "array" }
+      },
+      "required": ["id", "titleEn", "category", "govtFee", "convenienceFee"]
+    },
+    "Order": {
+      "title": "Order",
+      "description": "Customer order / service application record",
+      "type": "object",
+      "properties": {
+        "trackingId": { "type": "string" },
+        "serviceId": { "type": "string" },
+        "serviceName": { "type": "string" },
+        "customerName": { "type": "string" },
+        "customerMobile": { "type": "string" },
+        "customerEmail": { "type": "string" },
+        "customerState": { "type": "string" },
+        "customerDistrict": { "type": "string" },
+        "customerPinCode": { "type": "string" },
+        "status": { "type": "string" },
+        "currentStageNumber": { "type": "number" },
+        "stages": { "type": "array" },
+        "govtFee": { "type": "number" },
+        "convenienceFee": { "type": "number" },
+        "deliveryCharge": { "type": "number" },
+        "discount": { "type": "number" },
+        "totalAmount": { "type": "number" },
+        "quantity": { "type": "number" },
+        "courier": { "type": "string" },
+        "courierTrackingId": { "type": "string" },
+        "courierTrackingUrl": { "type": "string" },
+        "dispatchDate": { "type": "string" },
+        "shippingNotes": { "type": "string" },
+        "paymentMethod": { "type": "string" },
+        "paymentStatus": { "type": "string" },
+        "utrNumber": { "type": "string" },
+        "invoiceNumber": { "type": "string" },
+        "notes": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["trackingId", "serviceId", "customerName", "customerMobile", "status"]
+    },
+    "Kendra": {
+      "title": "Kendra",
+      "description": "Physical branch / Kendra service locator point",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "nameEn": { "type": "string" },
+        "nameBn": { "type": "string" },
+        "district": { "type": "string" },
+        "block": { "type": "string" },
+        "addressEn": { "type": "string" },
+        "addressBn": { "type": "string" },
+        "operatorName": { "type": "string" },
+        "contactNumber": { "type": "string" },
+        "operatingHoursEn": { "type": "string" },
+        "operatingHoursBn": { "type": "string" },
+        "hasBiometricKiosk": { "type": "boolean" },
+        "hasColorPrinting": { "type": "boolean" }
+      },
+      "required": ["id", "nameEn", "district", "addressEn"]
+    },
+    "Setting": {
+      "title": "Setting",
+      "description": "Store and cafe settings for MTCC",
+      "type": "object",
+      "properties": {
+        "businessName": { "type": "string" },
+        "tagline": { "type": "string" },
+        "location": { "type": "string" },
+        "phone": { "type": "string" },
+        "whatsappNumber": { "type": "string" },
+        "upiId": { "type": "string" },
+        "adminEmail": { "type": "string" }
+      }
+    },
+    "Admin": {
+      "title": "Admin",
+      "description": "Authorized administrator document",
+      "type": "object",
+      "properties": {
+        "email": { "type": "string" },
+        "role": { "type": "string" }
+      },
+      "required": ["email", "role"]
+    }
+  },
+  "firestore": {
+    "/services/{serviceId}": {
+      "schema": "Service",
+      "description": "Available cyber cafe and citizen services"
+    },
+    "/orders/{orderId}": {
+      "schema": "Order",
+      "description": "Orders and application submissions"
+    },
+    "/kendras/{kendraId}": {
+      "schema": "Kendra",
+      "description": "Authorized Kendras and physical branches"
+    },
+    "/settings/{settingId}": {
+      "schema": "Setting",
+      "description": "System and cafe configurations"
+    },
+    "/admins/{adminId}": {
+      "schema": "Admin",
+      "description": "List of authorized administrator user IDs"
+    }
+  }
+}

@@ -1,0 +1,68 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isValidId(id) {
+      return id is string && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function incoming() {
+      return request.resource.data;
+    }
+
+    function existing() {
+      return resource.data;
+    }
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid)) ||
+        (request.auth.token.email == 'bagchid84@gmail.com' && request.auth.token.email_verified == true)
+      );
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Publicly viewable services catalog
+    match /services/{serviceId} {
+      allow read: if true;
+      allow create, update, delete: if true; // Allows Admin panel management & seeding
+    }
+
+    // Physical branches and Kendra locators
+    match /kendras/{kendraId} {
+      allow read: if true;
+      allow create, update, delete: if true;
+    }
+
+    // Customer orders and applications
+    match /orders/{orderId} {
+      // Allowed for customers tracking orders and admin order dispatching
+      allow read: if true;
+      allow create: if incoming().trackingId is string && incoming().customerMobile is string;
+      allow update: if true;
+      allow delete: if isAdmin();
+    }
+
+    // Store settings & configuration
+    match /settings/{settingId} {
+      allow read: if true;
+      allow write: if true;
+    }
+
+    // Admin authorization records
+    match /admins/{adminId} {
+      allow read: if isSignedIn();
+      allow write: if isAdmin();
+    }
+  }
+}

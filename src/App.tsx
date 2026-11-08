@@ -3,7 +3,19 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
+import { 
+  db,
+  fetchServicesFromFirestore, 
+  saveServiceToFirestore, 
+  deleteServiceFromFirestore,
+  saveOrderToFirestore,
+  fetchKendrasFromFirestore,
+  saveKendraToFirestore,
+  handleFirestoreError,
+  OperationType
+} from './firebase';
+import { collection, onSnapshot } from 'firebase/firestore';
 import { 
   Sparkles, 
   FileCheck2, 
@@ -182,6 +194,68 @@ export default function App() {
 
   const isBn = language === 'bn';
 
+  // Firestore Database Real-time Synchronization & Seeding
+  useEffect(() => {
+    let isMounted = true;
+
+    async function syncDatabase() {
+      try {
+        // 1. Sync Services from Firestore
+        const remoteServices = await fetchServicesFromFirestore();
+        if (remoteServices && remoteServices.length > 0) {
+          if (isMounted) {
+            setServices(deduplicateServices(remoteServices));
+          }
+        } else {
+          // Seed initial services to Firestore
+          for (const s of SERVICES_DATA) {
+            await saveServiceToFirestore(s);
+          }
+        }
+
+        // 2. Sync Kendras from Firestore
+        const remoteKendras = await fetchKendrasFromFirestore();
+        if (remoteKendras && remoteKendras.length > 0) {
+          if (isMounted) {
+            setKendras(deduplicateKendras(remoteKendras));
+          }
+        } else {
+          for (const k of KENDRA_LOCATIONS) {
+            await saveKendraToFirestore(k);
+          }
+        }
+      } catch (err) {
+        console.warn('Firestore initial sync notice:', err);
+      }
+    }
+
+    syncDatabase();
+
+    // 3. Realtime Listener on Orders Collection
+    const unsubscribeOrders = onSnapshot(
+      collection(db, 'orders'),
+      (snapshot) => {
+        if (!snapshot.empty && isMounted) {
+          const remoteOrders: ApplicationRecord[] = [];
+          snapshot.forEach((doc) => {
+            remoteOrders.push(doc.data() as ApplicationRecord);
+          });
+          if (remoteOrders.length > 0) {
+            setApplications(deduplicateApplications(remoteOrders));
+          }
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, 'orders');
+      }
+    );
+
+    return () => {
+      isMounted = false;
+      unsubscribeOrders();
+    };
+  }, []);
+
   // Persistence helpers
   const handleUpdateSiteSettings = (newSettings: SiteSettings) => {
     setSiteSettings(newSettings);
@@ -195,6 +269,9 @@ export default function App() {
   const handleUpdateServices = (newServices: ServiceItem[]) => {
     const deduped = deduplicateServices(newServices);
     setServices(deduped);
+    for (const s of deduped) {
+      saveServiceToFirestore(s);
+    }
     try {
       localStorage.setItem('ezyseva_services', JSON.stringify(deduped));
     } catch (e) {
@@ -205,6 +282,9 @@ export default function App() {
   const handleUpdateKendras = (newKendras: KendraItem[]) => {
     const deduped = deduplicateKendras(newKendras);
     setKendras(deduped);
+    for (const k of deduped) {
+      saveKendraToFirestore(k);
+    }
     try {
       localStorage.setItem('ezyseva_kendras', JSON.stringify(deduped));
     } catch (e) {
@@ -222,6 +302,7 @@ export default function App() {
   };
 
   const handleUpdateService = (updated: ServiceItem) => {
+    saveServiceToFirestore(updated);
     setServices((prev) => {
       const next = prev.map((s) => (s.id === updated.id ? updated : s));
       const deduped = deduplicateServices(next);
@@ -235,6 +316,7 @@ export default function App() {
   };
 
   const handleAddService = (newService: ServiceItem) => {
+    saveServiceToFirestore(newService);
     setServices((prev) => {
       const filtered = prev.filter((s) => s.id !== newService.id);
       const next = [newService, ...filtered];
@@ -248,6 +330,7 @@ export default function App() {
   };
 
   const handleDeleteService = (serviceId: string) => {
+    deleteServiceFromFirestore(serviceId);
     setServices((prev) => {
       const next = prev.filter((s) => s.id !== serviceId);
       try {
@@ -262,6 +345,9 @@ export default function App() {
   const handleUpdateApplications = (newApps: ApplicationRecord[]) => {
     const deduped = deduplicateApplications(newApps);
     setApplications(deduped);
+    for (const app of deduped) {
+      saveOrderToFirestore(app);
+    }
     try {
       localStorage.setItem('ezyseva_applications', JSON.stringify(deduped));
     } catch (e) {
@@ -277,17 +363,20 @@ export default function App() {
     remarksBn: string
   ) => {
     setApplications((prev) => {
-      const next = prev.map((app) =>
-        app.trackingId === trackingId
-          ? {
-              ...app,
-              status,
-              currentStageNumber: stage,
-              remarksEn,
-              remarksBn,
-            }
-          : app
-      );
+      const next = prev.map((app) => {
+        if (app.trackingId === trackingId) {
+          const updated = {
+            ...app,
+            status,
+            currentStageNumber: stage,
+            remarksEn,
+            remarksBn,
+          };
+          saveOrderToFirestore(updated);
+          return updated;
+        }
+        return app;
+      });
       try {
         localStorage.setItem('ezyseva_applications', JSON.stringify(next));
       } catch (e) {
@@ -382,6 +471,7 @@ export default function App() {
   };
 
   const handleNewApplicationSubmit = (record: ApplicationRecord) => {
+    saveOrderToFirestore(record);
     setApplications((prev) => {
       const next = [record, ...prev];
       try {

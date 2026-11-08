@@ -203,8 +203,10 @@ export const Header: React.FC<HeaderProps> = ({
           <BrandLogo
             style={siteSettings.logoStyle || 'emblem_shield'}
             customLogoUrl={siteSettings.customLogoUrl}
-            portalName={siteSettings.portalName}
-            portalSubname={siteSettings.portalSubname}
+            portalName={siteSettings.portalName || 'Ma Tara Cyber Cafe'}
+            portalSubname={siteSettings.portalSubname || ' (MTCC)'}
+            portalNameBn={siteSettings.portalNameBn || 'মা তারা সাইবার ক্যাফে'}
+            portalSubnameBn={siteSettings.portalSubnameBn || ' (MTCC)'}
             tagline={isBn ? siteSettings.taglineBn : siteSettings.taglineEn}
             language={language}
           />

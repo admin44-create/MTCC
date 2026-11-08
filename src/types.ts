@@ -143,6 +143,8 @@ export type BannerThemeType = 'aurora_gradient' | 'digital_india_tricolor' | 'de
 export interface SiteSettings {
   portalName: string;
   portalSubname: string;
+  portalNameBn?: string;
+  portalSubnameBn?: string;
   taglineEn: string;
   taglineBn: string;
   noticeAlertEn: string;

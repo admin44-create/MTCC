@@ -105,7 +105,23 @@ export default function App() {
   const [siteSettings, setSiteSettings] = useState<SiteSettings>(() => {
     try {
       const saved = localStorage.getItem('ezyseva_site_settings');
-      return saved ? JSON.parse(saved) : DEFAULT_SITE_SETTINGS;
+      if (saved) {
+        const parsed = JSON.parse(saved);
+        if (parsed.portalName === 'EzySeva' || parsed.portalName === 'MTCC' || !parsed.portalName) {
+          const updated: SiteSettings = {
+            ...DEFAULT_SITE_SETTINGS,
+            ...parsed,
+            portalName: 'Ma Tara Cyber Cafe',
+            portalSubname: ' (MTCC)',
+            portalNameBn: 'মা তারা সাইবার ক্যাফে',
+            portalSubnameBn: ' (MTCC)',
+          };
+          localStorage.setItem('ezyseva_site_settings', JSON.stringify(updated));
+          return updated;
+        }
+        return { ...DEFAULT_SITE_SETTINGS, ...parsed };
+      }
+      return DEFAULT_SITE_SETTINGS;
     } catch {
       return DEFAULT_SITE_SETTINGS;
     }
@@ -686,18 +702,18 @@ export default function App() {
                 </>
               )}
             </h3>
-            <p className="text-xs sm:text-sm text-white/70 leading-relaxed">
+            <p className="text-xs sm:text-sm text-white/70 leading-relaxed font-bengali">
               {isBn
-                ? 'ইজি সেবা (EzySeva) প্ল্যাটফর্মে প্রতিটি পরিষেবার নির্ধারিত সরকারি ফি এবং সেবা চার্জ নাগরিক সনদ আকারে প্রকাশ করা আছে। অতিরিক্ত কোনো টাকা চাওয়া সম্পূর্ণ বেআইনি। কোনো অভিযোগ থাকলে তৎক্ষণাৎ আমাদের টোল-ফ্রি নম্বরে যোগাযোগ করুন।'
-                : 'All statutory fees and kiosk facilitation charges on EzySeva are strictly standardized by the Government Citizen Charter. Any demand for unauthorized fee is strictly illegal. Report grievances directly via our toll-free vigilance helpline.'}
+                ? `${siteSettings.portalNameBn || 'মা তারা সাইবার ক্যাফে'} (MTCC)-তে প্রতিটি পরিষেবার নির্ধারিত সরকারি ফি এবং সেবা চার্জ স্বচ্ছভাবে উল্লেখ করা রয়েছে। পিভিসি কার্ড, ছবি ও ফর্ম ফিলাপের যেকোনো সহায়তার জন্য সরাসরি আমাদের সাথে যোগাযোগ করুন।`
+                : `At ${siteSettings.portalName || 'Ma Tara Cyber Cafe'} (MTCC), all statutory government fees and cyber cafe services are transparently listed. For any assistance regarding smart PVC cards, online forms, or photo printing, contact our helpline directly.`}
             </p>
             <div className="flex flex-wrap items-center gap-4 pt-2">
               <a
-                href="tel:18003997382"
-                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 border border-blue-400/30 transition-all"
+                href={`tel:${(siteSettings.tollFreePhone || '+91 98320 00000').replace(/\D/g, '')}`}
+                className="flex items-center gap-2 bg-blue-600 hover:bg-blue-500 text-white px-5 py-2.5 rounded-xl text-xs font-bold shadow-lg shadow-blue-600/30 border border-blue-400/30 transition-all font-mono"
               >
                 <PhoneCall className="w-4 h-4" />
-                <span>1800-399-7382 ({isBn ? 'টোল-ফ্রি হেল্পলাইন' : 'Toll-Free Helpline'})</span>
+                <span>{siteSettings.tollFreePhone || '+91 98320 00000'} ({isBn ? 'হেল্পলাইন' : 'Helpline'})</span>
               </a>
               <button
                 onClick={() => setIsRateCardOpen(true)}
@@ -716,6 +732,7 @@ export default function App() {
         language={language}
         onOpenRateCard={() => setIsRateCardOpen(true)}
         onSelectNav={handleNavSelect}
+        siteSettings={siteSettings}
       />
 
       {/* Floating 24/7 AI Seva Sahayak Trigger Button */}

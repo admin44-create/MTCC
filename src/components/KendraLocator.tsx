@@ -51,12 +51,12 @@ export const KendraLocator: React.FC<KendraLocatorProps> = ({ kendras, language 
           <span>{isBn ? 'স্বীকৃত সেবা কেন্দ্র' : 'Authorized Seva Kendras'}</span>
         </div>
         <h2 className="text-2xl sm:text-3xl font-black text-white tracking-tight">
-          {isBn ? 'আপনার নিকটবর্তী ইজি সেবা কেন্দ্র খুঁজুন' : 'Find Your Nearest EzySeva Kendra'}
+          {isBn ? 'আপনার নিকটবর্তী মা তারা সাইবার ক্যাফে ও সেবা কেন্দ্র খুঁজুন' : 'Find Your Nearest Ma Tara Cyber Cafe & Digital Center'}
         </h2>
-        <p className="text-xs sm:text-sm text-white/60 mt-2">
+        <p className="text-xs sm:text-sm text-white/60 mt-2 font-bengali">
           {isBn
-            ? 'ভারতবর্ষ ও পশ্চিমবঙ্গের প্রতিটি জেলা, ব্লক ও পুর এলাকায় সরকারি স্বীকৃতিপ্রাপ্ত ডিজিটাল সেবা কেন্দ্র থেকে বায়োমেট্রিক ও অফলাইন সহায়তা পান।'
-            : 'Locate certified CSC & EzySeva facilitation centers across all Indian states and districts for biometric capture, instant e-KYC, and assisted services.'}
+            ? 'মঙ্গলবাড়ি, মালদা সহ পশ্চিমবঙ্গ ও আশেপাশের এলাকা জুড়ে মা তারা সাইবার ক্যাফে (MTCC) ও অনুমোদিত কেন্দ্র থেকে অফলাইন প্রিন্টিং ও সহায়তা পান।'
+            : 'Locate Ma Tara Cyber Cafe (MTCC) counters and partner centers across Malda and West Bengal for biometric capture, PVC printing, and assisted online services.'}
         </p>
       </div>
 

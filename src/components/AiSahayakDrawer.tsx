@@ -39,8 +39,8 @@ export const AiSahayakDrawer: React.FC<AiSahayakDrawerProps> = ({
       id: 'welcome-1',
       sender: 'assistant',
       text: isBn
-        ? 'নমস্কার! আমি আপনার ডিজিটাল "ইজি সেবা সহায়ক" (AI Citizen Assistant)। প্যান কার্ড, ভোটার কার্ড, আধার, জন্ম সনদ, রেশন e-KYC, বিদ্যুৎ বিল বা যেকোনো সরকারি স্কিম সম্পর্কে আমাকে প্রশ্ন করতে পারেন।'
-        : 'Namaskar! I am your 24/7 "EzySeva Sahayak" (AI Citizen Assistant). Feel free to ask me anything about required documents, fees, rules, or application procedures for any government and digital citizen services in India & West Bengal.',
+        ? 'নমস্কার! আমি "মা তারা সাইবার ক্যাফে (MTCC)"-র ডিজিটাল এআই সহায়ক। পিভিসি কার্ড প্রিন্টিং, পাসপোর্ট ছবি, বায়োডাটা, প্যান, ভোটার, রেশন কার্ড, চাকরির ফর্ম ফিলাপ বা যেকোনো সরকারি স্কিম সম্পর্কে আমাকে প্রশ্ন করতে পারেন।'
+        : 'Namaskar! I am your 24/7 "Ma Tara Cyber Cafe (MTCC)" AI Assistant. Feel free to ask me anything about smart PVC cards, photo printing, required documents, government services, or job form fill-ups in Mangalbari, Malda & West Bengal.',
       time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);

@@ -101,10 +101,10 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
                     {isBn ? 'ডিজিটাল ভারত • পশ্চিমবঙ্গ ই-ডিস্ট্রিক্ট সহায়ক পোর্টাল' : 'Digital India • e-District Citizen Services Portal'}
                   </div>
                   <h2 className="text-lg font-black text-slate-900 leading-tight">
-                    {isBn ? 'ইজি সেবা (EzySeva) ডিজিটাল কিয়স্ক নেটওয়ার্ক' : 'EzySeva Digital Citizen Kendra'}
+                    {isBn ? 'মা তারা সাইবার ক্যাফে (MTCC)' : 'Ma Tara Cyber Cafe (MTCC)'}
                   </h2>
                   <div className="text-[11px] text-slate-500">
-                    Govt. Certified CSC Partner & Electronic Facilitation Counter
+                    Mangalbari, Malda, West Bengal • Official Digital & Printing Center
                   </div>
                 </div>
               </div>
@@ -284,7 +284,7 @@ export const InvoiceModal: React.FC<InvoiceModalProps> = ({
 
             <div className="text-right">
               <div className="inline-block border-b border-slate-400 pb-1 mb-1">
-                <div className="font-serif italic font-bold text-slate-700 text-xs">EzySeva Systems</div>
+                <div className="font-serif italic font-bold text-slate-700 text-xs">Ma Tara Cyber Cafe (MTCC)</div>
               </div>
               <div className="text-[10px] font-bold text-slate-800">
                 {isBn ? 'কর্তৃপক্ষের অনুমোদিত ডিজিটাল স্বাক্ষর' : 'Authorized Digital Signatory'}

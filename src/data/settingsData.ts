@@ -1,10 +1,12 @@
 import { SiteSettings, CustomerUser, AdminCredentials } from '../types';
 
 export const DEFAULT_SITE_SETTINGS: SiteSettings = {
-  portalName: 'MTCC',
-  portalSubname: ' – Ma Tara Cyber Cafe',
-  taglineEn: 'Your Trusted Digital Service & Printing Partner',
-  taglineBn: 'আপনার বিশ্বস্ত ডিজিটাল সেবা ও প্রিন্টিং পার্টনার',
+  portalName: 'Ma Tara Cyber Cafe',
+  portalSubname: ' (MTCC)',
+  portalNameBn: 'মা তারা সাইবার ক্যাফে',
+  portalSubnameBn: ' (MTCC)',
+  taglineEn: 'Your Trusted Digital Service & Printing Partner | Mangalbari, Malda',
+  taglineBn: 'আপনার বিশ্বস্ত ডিজিটাল সেবা ও প্রিন্টিং পার্টনার | মঙ্গলবাড়ি, মালদা',
   noticeAlertEn: 'PVC Cards, Passport Photos, Voter, PAN & Job Form Fill-up services live at MTCC',
   noticeAlertBn: 'পিভিসি কার্ড, পাসপোর্ট ছবি, ভোটার, প্যান ও সরকারি চাকরির ফর্ম ফিলাপ সেবা চালু রয়েছে',
   heroHeadlinePreBn: 'আপনার সমস্ত ডিজিটাল পরিষেবা এখন ',

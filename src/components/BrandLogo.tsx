@@ -7,6 +7,8 @@ interface BrandLogoProps {
   customLogoUrl?: string;
   portalName: string;
   portalSubname: string;
+  portalNameBn?: string;
+  portalSubnameBn?: string;
   tagline: string;
   showSelector?: boolean;
   onSelectStyle?: (style: LogoStyleType) => void;
@@ -18,12 +20,16 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
   customLogoUrl,
   portalName,
   portalSubname,
+  portalNameBn,
+  portalSubnameBn,
   tagline,
   showSelector = false,
   onSelectStyle,
   language = 'bn',
 }) => {
   const isBn = language === 'bn';
+  const displayName = (isBn && portalNameBn) ? portalNameBn : portalName;
+  const displaySubname = (isBn && portalSubnameBn) ? portalSubnameBn : portalSubname;
   const [imgError, setImgError] = useState(false);
 
   useEffect(() => {
@@ -159,8 +165,8 @@ export const BrandLogo: React.FC<BrandLogoProps> = ({
       <div>
         <div className="flex items-center gap-1.5">
           <span className="text-lg sm:text-xl font-black tracking-tight text-white">
-            {portalName}
-            <span className="text-blue-400">{portalSubname}</span>
+            {displayName}
+            <span className="text-amber-400 font-extrabold">{displaySubname}</span>
           </span>
           <span className={`text-[10px] uppercase font-bold tracking-wider px-2 py-0.5 border rounded-full ${badge.color}`}>
             {badge.label}

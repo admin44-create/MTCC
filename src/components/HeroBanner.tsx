@@ -150,7 +150,7 @@ export const HeroBanner: React.FC<HeroBannerProps> = ({
       tagEn: '24/7 AI Assistance',
       tagBn: '২৪/৭ কৃত্রিম বুদ্ধিমত্তা সহায়ক',
       headlinePreEn: 'Confused About Documents? Ask ',
-      headlineHighlightEn: 'EzySeva AI Sahayak',
+      headlineHighlightEn: 'Ma Tara AI Sahayak',
       headlinePostEn: ' Anytime',
       headlinePreBn: 'সরকারি ফর্ম বা নথি নিয়ে দ্বিধা? ',
       headlineHighlightBn: 'এআই সহায়ক-কে জিজ্ঞাসা করুন',

@@ -151,8 +151,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
   const isWalletEnabled = gwConfig ? gwConfig.wallet !== false : true;
   const isPaylaterEnabled = gwConfig ? gwConfig.paylater !== false : true;
   const isCashEnabled = gwConfig ? gwConfig.kendraCash !== false : true;
-  const activeMerchantUpi = gwConfig?.merchantUpiId || 'ezyseva.pay@gov.in';
-  const activeMerchantName = gwConfig?.merchantName || siteSettings?.portalName || 'EzySeva';
+  const activeMerchantUpi = gwConfig?.merchantUpiId || 'mataracybercafe@upi';
+  const activeMerchantName = gwConfig?.merchantName || siteSettings?.portalName || 'Ma Tara Cyber Cafe';
 
   const convenienceFee = gwConfig?.zeroConvenienceFee ? 0 : service.convenienceFee;
   const totalFee = service.govtFee + convenienceFee;
@@ -251,7 +251,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
       } else if (paymentMethod === 'netbanking') {
         methodLabel = `Net Banking (${selectedBank.toUpperCase()})`;
       } else if (paymentMethod === 'wallet') {
-        methodLabel = `Digital Wallet (${selectedWallet === 'digipay' ? 'EzySeva DigiPay' : selectedWallet.toUpperCase()})`;
+        methodLabel = `Digital Wallet (${selectedWallet === 'digipay' ? 'MTCC Wallet' : selectedWallet.toUpperCase()})`;
       } else if (paymentMethod === 'paylater') {
         methodLabel = `Pay Later BNPL (${selectedPayLater.toUpperCase()})`;
       } else if (paymentMethod === 'kendra_cash') {
@@ -278,8 +278,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
         expectedDate: isPvc ? '07 Mar 2026' : '10 Mar 2026',
         status: isPvc ? 'ready_for_dispatch' : 'submitted',
         currentStageNumber: isPvc ? 2 : 1,
-        kendraAssignedEn: `EzySeva Regional Facilitation Center - ${district}`,
-        kendraAssignedBn: `ইজি সেবা আঞ্চলিক সহায়তা কেন্দ্র - ${district}`,
+        kendraAssignedEn: `Ma Tara Cyber Cafe (MTCC) - Mangalbari, Malda`,
+        kendraAssignedBn: `মা তারা সাইবার ক্যাফে (MTCC) - মঙ্গলবাড়ি, মালদা`,
         remarksEn: isPvc
           ? `PVC Card payment verified (Txn: ${txnId}, UTR: ${utrNumber}). Dispatched via India Post Speed Post: ${speedPostNumber}.`
           : `Application payment of ₹${totalFee} settled successfully (Txn: ${txnId}, UTR: ${utrNumber}). Initial document verification in progress.`,
@@ -825,7 +825,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                   <span className="font-mono font-bold text-white">₹{service.govtFee}</span>
                 </div>
                 <div className="flex justify-between text-white/70">
-                  <span>{isBn ? 'ইজি সেবা কেন্দ্র ও ডাক হ্যান্ডলিং ফি:' : 'EzySeva Portal & Postal Handling:'}</span>
+                  <span>{isBn ? 'সাইবার ক্যাফে ও সার্ভিস হ্যান্ডলিং ফি:' : 'Cyber Cafe & Service Handling Fee:'}</span>
                   <span className="font-mono font-bold text-white">₹{service.convenienceFee}</span>
                 </div>
                 <div className="flex justify-between text-white font-extrabold text-sm border-t border-white/10 pt-2">
@@ -843,7 +843,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     </div>
                     <div>
                       <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                        <span>{isBn ? 'ইজি সেবা সুরক্ষিত পেমেন্ট গেটওয়ে' : 'EzySeva Secure Payment Gateway'}</span>
+                        <span>{isBn ? 'মা তারা সাইবার ক্যাফে সুরক্ষিত পেমেন্ট গেটওয়ে' : 'MTCC Secure Payment Gateway'}</span>
                         <span className="text-[9px] bg-emerald-500/20 text-emerald-300 border border-emerald-400/30 px-1.5 py-0.5 rounded font-mono">
                           256-BIT SSL
                         </span>
@@ -1404,7 +1404,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                         </div>
                         <div>
                           <div className="text-xs font-bold text-white flex items-center gap-1.5">
-                            <span>EzySeva Citizen DigiPay Wallet</span>
+                            <span>MTCC Citizen DigiPay Wallet</span>
                             <span className="text-[9px] bg-emerald-500/20 text-emerald-300 px-1.5 py-0.2 rounded border border-emerald-400/30">
                               Instant 0 Fee
                             </span>
@@ -1532,12 +1532,12 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                     <div className="bg-amber-500/10 border border-amber-500/25 rounded-2xl p-4 text-white space-y-2">
                       <div className="flex items-center gap-2 text-amber-300 font-bold text-xs sm:text-sm">
                         <Banknote className="w-4 h-4" />
-                        <span>{isBn ? 'নিকটবর্তী সিএসসি / ইজি সেবা কেন্দ্রে নগদ জমা' : 'Pay Cash at Nearest EzySeva / CSC Kiosk'}</span>
+                        <span>{isBn ? 'মা তারা সাইবার ক্যাফে কাউন্টারে নগদ জমা' : 'Pay Cash at Ma Tara Cyber Cafe Counter'}</span>
                       </div>
-                      <p className="text-[11px] text-white/70 leading-relaxed">
+                      <p className="text-[11px] text-white/70 leading-relaxed font-bengali">
                         {isBn
-                          ? 'অনলাইনে পেমেন্ট করতে না পারলে আপনি এই আবেদন সাবমিট করে একটি "ক্যাশ ডিপোজিট চালান" ডাউনলোড করতে পারেন এবং ৭২ ঘণ্টার মধ্যে নিকটবর্তী কেন্দ্রে নগদ ফি জমা দিতে পারেন।'
-                          : 'If you prefer paying in cash, submit this application to generate a downloadable Cash Deposit Challan and pay at any authorized CSC VLE kiosk within 72 hours.'}
+                          ? 'অনলাইনে পেমেন্ট করতে না পারলে আপনি এই আবেদন সাবমিট করে একটি "ক্যাশ ডিপোজিট চালান" ডাউনলোড করতে পারেন এবং ৭২ ঘণ্টার মধ্যে ক্যাফেতে এসে নগদ ফি জমা দিতে পারেন।'
+                          : 'If you prefer paying in cash, submit this application to generate a downloadable Cash Deposit Challan and pay at our cyber cafe counter within 72 hours.'}
                       </p>
                     </div>
 
@@ -1566,7 +1566,7 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
                 />
                 <label htmlFor="citizen-declaration" className="text-xs text-white/70 cursor-pointer">
                   {isBn
-                    ? 'আমি ঘোষণা করছি যে প্রদত্ত সমস্ত তথ্য সত্য এবং ইজি সেবা পোর্টালে এই পেমেন্ট সম্পন্ন করতে সম্মত।'
+                    ? 'আমি ঘোষণা করছি যে প্রদত্ত সমস্ত তথ্য সত্য এবং মা তারা সাইবার ক্যাফে পোর্টালে এই পেমেন্ট সম্পন্ন করতে সম্মত।'
                     : 'I declare that the particulars provided are genuine and I agree to proceed with this payment.'}
                 </label>
               </div>
@@ -1649,8 +1649,8 @@ export const ServiceModal: React.FC<ServiceModalProps> = ({
               <div className="bg-white/5 backdrop-blur-xl border-2 border-dashed border-white/20 rounded-2xl p-5 text-xs text-white space-y-3 relative shadow-2xl">
                 <div className="flex items-center justify-between border-b border-white/10 pb-3">
                   <div>
-                    <span className="font-extrabold text-sm text-blue-400">EzySeva Official Receipt</span>
-                    <div className="text-[10px] text-white/40">e-Governance Certified Acknowledgment Slip</div>
+                    <span className="font-extrabold text-sm text-blue-400">Ma Tara Cyber Cafe (MTCC) Receipt</span>
+                    <div className="text-[10px] text-white/40">Official e-Services & Printing Acknowledgment</div>
                   </div>
                   <div className="text-right">
                     <span className="text-[10px] uppercase font-bold text-white/50">{isBn ? 'ট্র্যাকিং আইডি' : 'Tracking ID'}</span>

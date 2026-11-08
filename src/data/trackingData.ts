@@ -53,8 +53,8 @@ export const INITIAL_APPLICATIONS: ApplicationRecord[] = [
     expectedDate: '07 Mar 2026',
     status: 'department_processing',
     currentStageNumber: 3,
-    kendraAssignedEn: 'EzySeva Digital Kendra - Salt Lake Sector V',
-    kendraAssignedBn: 'ইজি সেবা ডিজিটাল কেন্দ্র - সল্টলেক সেক্টর ৫',
+    kendraAssignedEn: 'MTCC – Ma Tara Cyber Cafe, Mangalbari, Malda',
+    kendraAssignedBn: 'মা তারা সাইবার ক্যাফে, মঙ্গলবাড়ি, মালদা',
     remarksEn: 'Documents verified and e-KYC synchronized. Application forwarded to NSDL/Income Tax portal for PAN allocation.',
     remarksBn: 'নথিপত্র যাচাই সম্পন্ন এবং ই-কেওয়াইসি মিল পাওয়া গেছে। প্যান বরাদ্দের জন্য আয়কর দপ্তরে প্রেরিত।',
     formData: {

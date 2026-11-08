@@ -144,8 +144,8 @@ const PAYMENT_METHODS_LIST: {
     key: 'wallet',
     nameBn: 'ডিজিটাল ওয়ালেট',
     nameEn: 'Digital Wallets',
-    descBn: 'EzySeva ডিজি-পে ওয়ালেট, Paytm, Amazon Pay ও Mobikwik',
-    descEn: 'EzySeva DigiPay Wallet, Paytm, Amazon Pay & Mobikwik',
+    descBn: 'MTCC ওয়ালেট, Paytm, Amazon Pay ও Mobikwik',
+    descEn: 'MTCC Wallet, Paytm, Amazon Pay & Mobikwik',
   },
   {
     key: 'paylater',
@@ -513,14 +513,14 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
     wallet: true,
     paylater: true,
     kendraCash: true,
-    merchantUpiId: 'ezyseva.pay@gov.in',
+    merchantUpiId: 'mataracybercafe@upi',
     gatewayMode: 'simulator',
     activeProvider: 'razorpay',
-    merchantName: 'EzySeva Digital Services Ltd',
-    merchantKey: 'rzp_live_ezyseva_gov_2026',
+    merchantName: 'Ma Tara Cyber Cafe (MTCC)',
+    merchantKey: 'rzp_live_mtcc_malda_2026',
     autoVerify: true,
     zeroConvenienceFee: false,
-    supportPhone: '1800-399-7382',
+    supportPhone: '+91 98320 00000',
   };
 
   const updateGateway = (updates: Partial<PaymentGatewaySettings>) => {
@@ -1657,7 +1657,7 @@ export const AdminPanelModal: React.FC<AdminPanelModalProps> = ({
                               type="text"
                               value={currentGateway.merchantName || ''}
                               onChange={(e) => updateGateway({ merchantName: e.target.value })}
-                              placeholder="EzySeva Digital Services Ltd"
+                              placeholder="Ma Tara Cyber Cafe (MTCC)"
                               className="w-full px-3 py-2 rounded-xl border border-white/15 bg-white/5 text-white text-xs focus:border-amber-400 focus:outline-hidden"
                             />
                             <span className="text-[10px] text-white/40 mt-1 block">
